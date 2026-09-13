@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ShincChat — Meet someone new. Verified random chat with real strangers.</title>
+<meta name="description" content="ShincChat pairs you with a real, verified stranger in seconds — text, voice or video. Gender-matched, consent-first, moderated with one-tap reporting. Free forever, no download.">
+<meta name="theme-color" content="#05070D">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://shincchat.com/">
+
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ShincChat">
+<meta property="og:title" content="ShincChat — The best conversations start with a stranger">
+<meta property="og:description" content="Press start and meet a real, verified stranger in seconds. Text, voice or video. No feeds, no followers, no algorithms deciding who you get to know.">
+<meta property="og:url" content="https://shincchat.com/">
+<meta property="og:image" content="assets/og-cover.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="675">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ShincChat — Verified random chat">
+<meta name="twitter:description" content="Meet a real, verified stranger in seconds. Text, voice or video.">
+<meta name="twitter:image" content="assets/og-cover.jpg">
+
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/favicon.svg">
+<link rel="preload" as="image" href="assets/panel-stranger.jpg" fetchpriority="low">
+<link rel="preload" as="image" href="assets/panel-you.jpg" fetchpriority="low">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.classList.replace('no-js', 'js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "ShincChat",
+      "applicationCategory": "SocialNetworkingApplication",
+      "operatingSystem": "Any (browser-based)",
+      "url": "https://shincchat.com/",
+      "description": "Verified random chat. Meet a real stranger in seconds over text, voice or video.",
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "0",
+        "highPrice": "12",
+        "offerCount": "3"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "32418",
+        "bestRating": "5"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is ShincChat actually free?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Unlimited matches, text, voice and video, blurred verification and reporting are free forever. Plus and Pro remove ads and add comfort features — they never gate the ability to meet people." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an account to chat?",
+          "acceptedAnswer": { "@type": "Answer", "text": "You need a free account — username and password, or Google, Facebook or X. Accounts keep your history, friends and reports tied to you instead of to a throwaway browser session, which is what makes moderation meaningful." }
+        },
+        {
+          "@type": "Question",
+          "name": "How does blurred verification work?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Before video, each person can send a roughly 2.5 second clip that arrives blurred on the other side. Revealing it is a separate step that only happens with consent from the person who recorded it. Nothing is shown, recorded or revealed automatically." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I choose who I meet?",
+          "acceptedAnswer": { "@type": "Answer", "text": "You choose the shape of the match: Recommended, Random, Nearby, or a specific country, plus text or video. Gender is declared once per account and locked, so matching is honest on both sides." }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens if someone behaves badly?",
+          "acceptedAnswer": { "@type": "Answer", "text": "One tap opens a report with fixed reasons. By default a submitted report bans the reported account immediately and permanently — they are disconnected on the spot. Moderators review every report and can reverse bad-faith bans." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is ShincChat private?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Video and voice travel peer-to-peer over WebRTC and the whole site runs on HTTPS, which cameras and microphones require. You can use a nickname, hide your profile, turn on disappearing messages, delete a message for everyone, or delete whole conversations. Nearby matching only ever shows an approximate area, never an address." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work on mobile?",
+          "acceptedAnswer": { "@type": "Answer", "text": "It runs in any modern mobile browser — nothing to install. Camera and microphone need permission and HTTPS, which is why the site is encrypted everywhere." }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is ShincChat for?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Adults only, 18 and over. ShincChat is for people who want a real conversation with someone they have never met, without a feed, a follower count or an algorithm in between." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- Ambient background -->
+<div class="ambient" aria-hidden="true">
+  <div class="ambient__grid"></div>
+  <div class="orb orb--1"></div>
+  <div class="orb orb--2"></div>
+  <div class="orb orb--3"></div>
+  <div class="ambient__glow"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ============ ICON SPRITE ============ -->
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.4 9.4 0 0 1-3.3-.6L3 21l1.8-4.6A8 8 0 0 1 3.6 11.5 8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 10.5 21 7.6a.6.6 0 0 1 .9.5v7.8a.6.6 0 0 1-.9.5l-5.5-2.9z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12h1.6M7 8v8M10.6 5v14M14.2 9v6M17.8 6.5v11M21.4 10.5v3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.8 4.6 5.7v5.9c0 4.4 3 8.2 7.4 9.6 4.4-1.4 7.4-5.2 7.4-9.6V5.7z"/></symbol>
+    <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M12 2.8 4.6 5.7v5.9c0 4.4 3 8.2 7.4 9.6 4.4-1.4 7.4-5.2 7.4-9.6V5.7z"/><path d="m8.9 11.8 2.2 2.2 4-4.4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3.5 7.5h17M3.5 12.5h17M3.5 17.5h17"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 12h15M13.5 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19.5v-15M6 10.5l6-6 6 6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.6v12.8a.7.7 0 0 0 1.07.6l10-6.4a.7.7 0 0 0 0-1.2l-10-6.4A.7.7 0 0 0 8 5.6z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.4 2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.9-5.2 2.9 1-6L3.5 9.7l5.9-.8z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.2l1.7 4.6 4.6 1.7-4.6 1.7L12 15.8l-1.7-4.6L5.7 9.5l4.6-1.7zM18.6 15.4l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8zM5.4 14l.6 1.6 1.6.6-1.6.6L5.4 18.4l-.6-1.6-1.6-.6 1.6-.6z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.4 2.5 4.8 13.2h5.6L9.9 21.5l8.9-11h-5.9z"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M2.8 12h18.4M12 2.8c2.4 2.6 3.7 5.9 3.7 9.2s-1.3 6.6-3.7 9.2c-2.4-2.6-3.7-5.9-3.7-9.2S9.6 5.4 12 2.8z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M12 6.8V12l3.4 2.1"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><path d="M9.6 2.6h4.8M12 12.2l3-2.6"/><circle cx="12" cy="13.8" r="7.7"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.2" y="10.3" width="15.6" height="10.7" rx="3"/><path d="M8 10.3V7.6a4 4 0 0 1 8 0v2.7M12 14.6v2.6"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.4 12S5.9 5.8 12 5.8 21.6 12 21.6 12 18.1 18.2 12 18.2 2.4 12 2.4 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.6 6.2A8.9 8.9 0 0 1 12 5.8c6.1 0 9.6 6.2 9.6 6.2a17 17 0 0 1-3 3.9M6 7.9A17 17 0 0 0 2.4 12S5.9 18.2 12 18.2a9 9 0 0 0 3.6-.7"/><path d="M10 10a2.9 2.9 0 0 0 4 4M3.5 3.5l17 17"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20.2a6.4 6.4 0 0 1 12.4 0M16.2 5.1a3.4 3.4 0 0 1 0 6.3M17.6 14.6a6.4 6.4 0 0 1 3.6 5.6"/></symbol>
+    <symbol id="i-badge" viewBox="0 0 24 24"><path d="M12 2.6l2.3 1.7 2.8-.2 1 2.7 2.3 1.6-.8 2.7.8 2.7-2.3 1.6-1 2.7-2.8-.2L12 21.4l-2.3-1.7-2.8.2-1-2.7L3.6 15.6l.8-2.7-.8-2.7 2.3-1.6 1-2.7 2.8.2z"/><path d="m9 12.2 2.1 2.1L15.3 10"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.6l-1.5-1.3C5.4 14.9 2.5 12.3 2.5 9.1a5 5 0 0 1 5-5c1.7 0 3.3.8 4.5 2.2A5.9 5.9 0 0 1 16.5 4.1a5 5 0 0 1 5 5c0 3.2-2.9 5.8-8 10.2z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21.4V3.2M5 4.3h11.6l-1.8 3.9 1.8 3.9H5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3.2 8.6 4.4L12 12 3.4 7.6zM3.4 12.4 12 16.8l8.6-4.4M3.4 16.9 12 21.3l8.6-4.4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6.4" y="2.4" width="11.2" height="19.2" rx="3"/><path d="M10.6 18.6h2.8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2.8" y="5" width="18.4" height="14" rx="3"/><path d="m3.6 7.4 7.3 5a2 2 0 0 0 2.2 0l7.3-5"/></symbol>
+    <symbol id="i-quote" viewBox="0 0 24 24"><path d="M9.6 5.6C6.3 7 4.4 9.8 4.4 13.4c0 3 1.6 5 4 5s3.8-1.6 3.8-3.8-1.4-3.6-3.3-3.6c-.4 0-.8 0-1 .2.3-1.7 1.5-3.2 3.4-4.2zm9.3 0c-3.3 1.4-5.2 4.2-5.2 7.8 0 3 1.6 5 4 5s3.8-1.6 3.8-3.8-1.4-3.6-3.3-3.6c-.4 0-.8 0-1 .2.3-1.7 1.5-3.2 3.4-4.2z"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8.6" width="18" height="4" rx="1.4"/><path d="M4.6 12.6v6.8a1.8 1.8 0 0 0 1.8 1.8h11.2a1.8 1.8 0 0 0 1.8-1.8v-6.8M12 8.6v12.6M12 8.6S10.8 4 8.4 4a2.3 2.3 0 0 0 0 4.6zM12 8.6S13.2 4 15.6 4a2.3 2.3 0 0 1 0 4.6z"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3.4 7.6l3.9 3.1L12 4.6l4.7 6.1 3.9-3.1-1.7 11.2H5.1z"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24"><path d="M4.6 20V13M9.5 20V9M14.5 20V5.6M19.4 20V11"/></symbol>
+    <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M7.2 8.4a3.6 3.6 0 1 0 0 7.2c2.6 0 3.6-2 4.8-3.6 1.2-1.6 2.2-3.6 4.8-3.6a3.6 3.6 0 1 1 0 7.2c-2.6 0-3.6-2-4.8-3.6C10.8 10.4 9.8 8.4 7.2 8.4z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.4s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10.2" r="2.6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.6 6.6h14.8M9.4 6.6V4.8a1.6 1.6 0 0 1 1.6-1.6h2a1.6 1.6 0 0 1 1.6 1.6v1.8M6.6 6.6l.9 12.7a1.8 1.8 0 0 0 1.8 1.7h5.4a1.8 1.8 0 0 0 1.8-1.7l.9-12.7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M17.6 3h3.1l-6.8 7.8L21.9 21h-6.2l-4.9-6.4L5.2 21H2.1l7.3-8.3L2.4 3h6.4l4.4 5.8zm-1.1 16.1h1.7L7.6 4.8H5.8z"/></symbol>
+    <symbol id="i-instagram" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.2"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.3" cy="6.7" r="1.15" style="fill:currentColor;stroke:none"/></symbol>
+    <symbol id="i-youtube" viewBox="0 0 24 24"><path d="M22.4 12s0-3.3-.42-4.9a2.6 2.6 0 0 0-1.83-1.84C18.5 4.85 12 4.85 12 4.85s-6.5 0-8.15.41A2.6 2.6 0 0 0 2.02 7.1C1.6 8.7 1.6 12 1.6 12s0 3.3.42 4.9a2.6 2.6 0 0 0 1.83 1.84c1.65.41 8.15.41 8.15.41s6.5 0 8.15-.41a2.6 2.6 0 0 0 1.83-1.84c.42-1.6.42-4.9.42-4.9z"/><path d="M9.9 15.3V8.7l5.6 3.3z" style="fill:currentColor;stroke:none"/></symbol>
+    <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M16.3 2.5c.35 2.05 1.55 3.4 3.7 3.6v2.5c-1.35.1-2.6-.3-3.7-1.1v6.2c0 4.4-4 6.9-7.4 5.5a5.9 5.9 0 0 1-3.2-6.4 5.8 5.8 0 0 1 6.2-4.5v2.6a3 3 0 0 0-1.4-.2 3.1 3.1 0 0 0-2.6 3c0 3.3 4.4 4.4 5.4 1.2z"/></symbol>
+    <symbol id="i-gender" viewBox="0 0 24 24"><circle cx="8.6" cy="14.4" r="4.2"/><path d="M8.6 18.6v3.2M6.9 20.3h3.4M15.2 3.2l-2.9 2.9M19.9 3.2h-4.7M19.9 3.2v4.7"/><circle cx="15.4" cy="7.6" r="4.2"/></symbol>
+  </defs>
+</svg>
+
+<!-- ================= NAVBAR ================= -->
+<header class="nav" id="nav">
+  <div class="nav__bar" aria-hidden="true"><span class="nav__progress" id="scrollProgress"></span></div>
+  <div class="nav__inner container">
+    <a class="brand" href="#top" aria-label="ShincChat — home">
+      <span class="brand__mark" aria-hidden="true"><img src="assets/logo-mark.svg" alt="" width="20" height="20"></span>
+      <span class="brand__text">Shinc<em>Chat</em></span>
+      <span class="brand__tag">18+</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#features" data-navlink>Features</a>
+      <a href="#showcase" data-navlink>Product</a>
+      <a href="#how" data-navlink>How it works</a>
+      <a href="#safety" data-navlink>Safety</a>
+      <a href="#pricing" data-navlink>Pricing</a>
+      <a href="#faq" data-navlink>FAQ</a>
+    </nav>
+
+    <div class="nav__actions">
+      <span class="nav__live" title="People online right now">
+        <span class="pulse" aria-hidden="true"></span>
+        <span><strong data-online="12483">12,483</strong> online</span>
+      </span>
+      <a class="btn btn--ghost btn--sm nav__login" href="#start">Log in</a>
+      <a class="btn btn--primary btn--sm nav__cta" data-app-link href="#start">
+        <span class="nav__cta-full">Start chatting</span><span class="nav__cta-mini">Start</span>
+        <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>
+      </a>
+      <button class="nav__burger" id="burger" type="button" aria-expanded="false" aria-controls="mobileMenu" aria-label="Open menu">
+        <span class="nav__burger-box" aria-hidden="true"><span></span><span></span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile menu -->
+<div class="sheet" id="mobileMenu" hidden>
+  <div class="sheet__backdrop" data-close-menu></div>
+  <div class="sheet__panel" role="dialog" aria-modal="true" aria-label="Menu">
+    <nav class="sheet__nav" aria-label="Mobile">
+      <a href="#features" data-menu-link><span>Features</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <a href="#showcase" data-menu-link><span>Product</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <a href="#how" data-menu-link><span>How it works</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <a href="#safety" data-menu-link><span>Safety</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <a href="#pricing" data-menu-link><span>Pricing</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <a href="#testimonials" data-menu-link><span>Stories</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <a href="#faq" data-menu-link><span>FAQ</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    </nav>
+    <div class="sheet__foot">
+      <a class="btn btn--primary btn--block" data-app-link href="#start">Start chatting free</a>
+      <p class="sheet__note">Free forever · No download · 18+</p>
+    </div>
+  </div>
+</div>
+
+<main id="main">
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="container hero__grid">
+    <div class="hero__copy">
+      <p class="eyebrow hero__eyebrow" data-hero-item style="--i:0">
+        <span class="pulse" aria-hidden="true"></span>
+        Verified random chat · <strong data-online="12483">12,483</strong> online now
+      </p>
+
+      <h1 class="hero__title" data-hero-item style="--i:1">
+        The best conversations
+        <span class="grad-text">start with a stranger.</span>
+      </h1>
+
+      <p class="hero__lede" data-hero-item style="--i:2">
+        ShincChat drops you into a one&#8209;on&#8209;one chat with a real, verified person — text, voice or video.
+        No feed. No followers. No algorithm deciding who you get to know. Just press <strong>Start</strong>.
+      </p>
+
+      <div class="hero__cta" data-hero-item style="--i:3">
+        <a class="btn btn--primary btn--lg btn--magnetic" data-app-link href="#start">
+          <span class="btn__label">Start chatting — it's free</span>
+          <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>
+        </a>
+        <a class="btn btn--quiet btn--lg" href="#showcase" >
+          <span class="btn__play" aria-hidden="true"><svg class="ic"><use href="#i-play"/></svg></span>
+          See how it works
+        </a>
+      </div>
+
+      <ul class="hero__assure" data-hero-item style="--i:4">
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Free forever</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> No download</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Matched in ~4 seconds</li>
+      </ul>
+
+      <div class="hero__social" data-hero-item style="--i:5">
+        <div class="avatars" aria-hidden="true">
+          <span class="avatar" style="--a:#2DD4BF;--b:#1a8f80">A</span>
+          <span class="avatar" style="--a:#6C7CF5;--b:#3b46a8">M</span>
+          <span class="avatar" style="--a:#F0568C;--b:#a8305c">P</span>
+          <span class="avatar" style="--a:#F5A623;--b:#b06f0a">D</span>
+          <span class="avatar" style="--a:#4C8DFF;--b:#2456b8">Y</span>
+        </div>
+        <p>
+          <span class="stars" role="img" aria-label="Rated 4.8 out of 5">
+            <svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg>
+          </span>
+          <strong>4.8/5</strong> from 32,418 chatters · joined by <strong>2.4M</strong> people in 190+ countries
+        </p>
+      </div>
+    </div>
+
+    <!-- Interactive product mock -->
+    <div class="hero__mock" data-hero-item style="--i:2" data-tilt>
+      <div class="mock glass" id="heroMock">
+        <div class="mock__chrome" aria-hidden="true">
+          <span class="mock__dots"><i></i><i></i><i></i></span>
+          <span class="mock__url"><svg class="ic"><use href="#i-lock"/></svg> shincchat.com</span>
+          <span class="mock__live"><span class="pulse"></span> LIVE</span>
+        </div>
+
+        <div class="mock__top">
+          <div class="mock__who">
+            <span class="avatar avatar--sm" style="--a:#2DD4BF;--b:#1a8f80" aria-hidden="true">A</span>
+            <span class="mock__meta">
+              <strong id="mockName">Stranger · Lisbon</strong>
+              <small id="mockSub">Matched in 4.2s · text mode</small>
+            </span>
+          </div>
+          <div class="seg" role="group" aria-label="Preview mode">
+            <button class="seg__btn is-on" type="button" data-mode="text" aria-pressed="true">Text</button>
+            <button class="seg__btn" type="button" data-mode="video" aria-pressed="false">Video</button>
+          </div>
+        </div>
+
+        <p class="sr-only">Preview of the ShincChat interface: a one-to-one conversation with a matched stranger, which you can view as text chat or as a two-panel video call.</p>
+
+        <!-- Text view -->
+        <div class="mock__body mock__body--text" id="mockText" aria-hidden="true">
+          <div class="chatlog" id="chatLog">
+            <noscript><p class="sysmsg">Enable JavaScript to watch the live conversation preview.</p></noscript>
+          </div>
+          <div class="composer">
+            <span class="composer__input" id="composerGhost">Say something better than “hi”…</span>
+            <span class="composer__mic" aria-hidden="true"><svg class="ic"><use href="#i-mic"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Video view -->
+        <div class="mock__body mock__body--video" id="mockVideo" aria-hidden="true" hidden>
+          <div class="vidgrid">
+            <figure class="vid">
+              <img src="assets/panel-stranger.jpg" alt="Blurred preview of a stranger on a video call at night" loading="lazy" decoding="async" width="800" height="1200">
+              <figcaption class="vid__chip">Stranger · Lisbon</figcaption>
+              <span class="vid__scan" aria-hidden="true"></span>
+            </figure>
+            <figure class="vid">
+              <img src="assets/panel-you.jpg" alt="Blurred preview of you on a video call at night" loading="lazy" decoding="async" width="800" height="1200">
+              <figcaption class="vid__chip vid__chip--you">You</figcaption>
+            </figure>
+          </div>
+          <div class="vidbar" aria-hidden="true">
+            <span class="vidbar__btn is-on"><svg class="ic"><use href="#i-mic"/></svg></span>
+            <span class="vidbar__btn is-on"><svg class="ic"><use href="#i-video"/></svg></span>
+            <span class="vidbar__btn"><svg class="ic"><use href="#i-chat"/></svg></span>
+            <span class="vidbar__time" id="vidTime">00:12</span>
+            <span class="vidbar__btn vidbar__btn--danger"><svg class="ic"><use href="#i-close"/></svg></span>
+          </div>
+          <p class="vidnote">Both sides must agree before video starts. Always.</p>
+        </div>
+      </div>
+
+      <div class="float-card float-card--a glass" data-float>
+        <svg class="ic ic--teal" aria-hidden="true"><use href="#i-clock"/></svg>
+        <span><strong>4.2s</strong><small>median match time</small></span>
+      </div>
+      <div class="float-card float-card--b glass" data-float>
+        <svg class="ic ic--indigo" aria-hidden="true"><use href="#i-shield-check"/></svg>
+        <span><strong>Blur-first</strong><small>consent to reveal</small></span>
+      </div>
+      <div class="float-card float-card--c glass" data-float>
+        <svg class="ic ic--pink" aria-hidden="true"><use href="#i-globe"/></svg>
+        <span><strong>190+</strong><small>countries online</small></span>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ================= SOCIAL PROOF ================= -->
+<section class="proof" id="proof" aria-labelledby="proofTitle">
+  <div class="container">
+    <h2 class="sr-only" id="proofTitle">ShincChat by the numbers</h2>
+    <div class="stats" data-stagger>
+      <article class="stat glass spot" data-reveal>
+        <svg class="ic stat__ic" aria-hidden="true"><use href="#i-chat"/></svg>
+        <p class="stat__num"><span data-count="2.4" data-decimals="1">0</span>M<span class="stat__plus">+</span></p>
+        <p class="stat__label">conversations started</p>
+      </article>
+      <article class="stat glass spot" data-reveal>
+        <svg class="ic stat__ic" aria-hidden="true"><use href="#i-globe"/></svg>
+        <p class="stat__num"><span data-count="190">0</span><span class="stat__plus">+</span></p>
+        <p class="stat__label">countries represented</p>
+      </article>
+      <article class="stat glass spot" data-reveal>
+        <svg class="ic stat__ic" aria-hidden="true"><use href="#i-bolt"/></svg>
+        <p class="stat__num"><span data-count="4.2" data-decimals="1">0</span>s</p>
+        <p class="stat__label">median time to a match</p>
+      </article>
+      <article class="stat glass spot" data-reveal>
+        <svg class="ic stat__ic" aria-hidden="true"><use href="#i-star"/></svg>
+        <p class="stat__num"><span data-count="4.8" data-decimals="1">0</span>/5</p>
+        <p class="stat__label">average chatter rating</p>
+      </article>
+    </div>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track" data-marquee>
+        <span class="chip">Lisbon</span><span class="chip">Mumbai</span><span class="chip">São Paulo</span><span class="chip">Berlin</span><span class="chip">Lagos</span><span class="chip">Osaka</span><span class="chip">Toronto</span><span class="chip">Manila</span><span class="chip">Warsaw</span><span class="chip">Nairobi</span><span class="chip">Mexico City</span><span class="chip">Seoul</span><span class="chip">Dublin</span><span class="chip">Jakarta</span><span class="chip">Cairo</span><span class="chip">Buenos Aires</span>
+      </div>
+      <div class="marquee__track marquee__track--rev" data-marquee>
+        <span class="chip">“made a friend in Seoul at 2am”</span><span class="chip">“first conversation in months that felt real”</span><span class="chip">“we talked for three hours”</span><span class="chip">“skipped zero creeps, that's the review”</span><span class="chip">“voice notes changed everything”</span><span class="chip">“finally, a chat site with actual moderation”</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES (BENTO) ================= -->
+<section class="section" id="features" aria-labelledby="featuresTitle">
+  <div class="container">
+    <header class="sec-head" data-reveal>
+      <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> Why ShincChat</p>
+      <h2 class="sec-title" id="featuresTitle">Everything a real conversation needs.<br class="br-desktop"> Nothing it doesn't.</h2>
+      <p class="sec-lede">Random chat broke because nobody was accountable. We rebuilt it around verification, consent and moderation that actually bites — then made it feel like the nicest chat app you've ever used.</p>
+    </header>
+
+    <div class="bento" data-stagger>
+      <!-- Matched, not roulette -->
+      <article class="card card--wide glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile" aria-hidden="true"><svg class="ic"><use href="#i-gender"/></svg></span>
+        <h3>Matched, not roulette</h3>
+        <p>Choose the shape of the meeting — recommended, random, nearby or a specific country — and pick text or video before you press start. Gender is declared once and locked, so both sides know exactly who they're talking to.</p>
+        <div class="pref" role="list" aria-label="Match preference examples">
+          <button class="pref__chip is-on" type="button" role="listitem" data-pref="Recommended">Recommended</button>
+          <button class="pref__chip" type="button" role="listitem" data-pref="Random">Random</button>
+          <button class="pref__chip" type="button" role="listitem" data-pref="Nearby">Nearby</button>
+          <button class="pref__chip" type="button" role="listitem" data-pref="India">India</button>
+          <button class="pref__chip" type="button" role="listitem" data-pref="Brazil">Brazil</button>
+          <button class="pref__chip" type="button" role="listitem" data-pref="Germany">Germany</button>
+        </div>
+        <p class="card__hint" id="prefHint">We'll pair you with people you're most likely to click with.</p>
+      </article>
+
+      <!-- Blur first -->
+      <article class="card card--tall glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile ic-tile--indigo" aria-hidden="true"><svg class="ic"><use href="#i-eye"/></svg></span>
+        <h3>Blur first. Reveal when you're ready.</h3>
+        <p>A short clip arrives blurred on the other side. Unblurring is a separate, consent-gated step — nothing is shown automatically, ever.</p>
+        <div class="reveal-demo" id="revealDemo" data-reveal-demo>
+          <img src="assets/verify-blur.jpg" alt="A blurred verification clip preview" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="reveal-demo__badge" aria-hidden="true">2.5s clip · blurred</span>
+          <span class="reveal-demo__cta">Hover to preview a reveal</span>
+        </div>
+      </article>
+
+      <!-- Three modes -->
+      <article class="card glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile ic-tile--pink" aria-hidden="true"><svg class="ic"><use href="#i-layers"/></svg></span>
+        <h3>Three modes, one conversation</h3>
+        <p>Start in text, add live voice, switch to video — mid-conversation, with agreement from both sides.</p>
+        <div class="modes" aria-hidden="true">
+          <span class="mode"><svg class="ic"><use href="#i-chat"/></svg> Text</span>
+          <span class="mode"><svg class="ic"><use href="#i-mic"/></svg> Voice</span>
+          <span class="mode"><svg class="ic"><use href="#i-video"/></svg> Video</span>
+        </div>
+      </article>
+
+      <!-- Hold to talk -->
+      <article class="card glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile" aria-hidden="true"><svg class="ic"><use href="#i-wave"/></svg></span>
+        <h3>Hold to talk</h3>
+        <p>Press and hold the mic to send a voice note. Some things land better said than typed.</p>
+        <div class="waveform" id="waveform" aria-hidden="true"></div>
+      </article>
+
+      <!-- History -->
+      <article class="card glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile ic-tile--indigo" aria-hidden="true"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <h3>History that follows your login</h3>
+        <p>Every conversation is stored against your account, not your browser. Reopen a chat and pick up mid-sentence — or see when they're back online.</p>
+        <ul class="mini-chats" aria-hidden="true">
+          <li><span class="avatar avatar--xs" style="--a:#F0568C;--b:#a8305c">A</span><span>Ana <i>“ok but the wombat thing…”</i></span><em>2m</em></li>
+          <li><span class="avatar avatar--xs" style="--a:#4C8DFF;--b:#2456b8">K</span><span>Kenji <i>Voice note · 0:14</i></span><em>1h</em></li>
+          <li><span class="avatar avatar--xs" style="--a:#2DD4BF;--b:#1a8f80">L</span><span>Lena <i>Offline · messages saved</i></span><em>3d</em></li>
+        </ul>
+      </article>
+
+      <!-- Disappearing -->
+      <article class="card glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile ic-tile--pink" aria-hidden="true"><svg class="ic"><use href="#i-timer"/></svg></span>
+        <h3>Disappearing messages</h3>
+        <p>Once seen, 24 hours, 7 days — or keep them. Delete a message for everyone, or clear a whole conversation.</p>
+        <div class="timers" role="list" aria-label="Disappearing message timers">
+          <span role="listitem" class="timer">Once seen</span>
+          <span role="listitem" class="timer is-on">24 hours</span>
+          <span role="listitem" class="timer">7 days</span>
+          <span role="listitem" class="timer">Never</span>
+        </div>
+      </article>
+
+      <!-- Profiles & friends -->
+      <article class="card glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile ic-tile--indigo" aria-hidden="true"><svg class="ic"><use href="#i-users"/></svg></span>
+        <h3>Profiles, friends, requests</h3>
+        <p>Keep the people worth keeping. Send a request, see when they're online, and leave a review after a good conversation.</p>
+        <div class="friend-row" aria-hidden="true">
+          <span class="friend-chip"><span class="avatar avatar--xs" style="--a:#F0568C;--b:#a8305c">A</span> Ana <em class="dot-on"></em></span>
+          <span class="friend-chip"><span class="avatar avatar--xs" style="--a:#4C8DFF;--b:#2456b8">K</span> Request</span>
+          <span class="friend-chip"><span class="avatar avatar--xs" style="--a:#F5A623;--b:#b06f0a">D</span> 4.9 ★</span>
+        </div>
+      </article>
+
+      <!-- Reports -->
+      <article class="card card--wide2 glass spot" data-reveal>
+        <div class="card__glow" aria-hidden="true"></div>
+        <span class="ic-tile ic-tile--warn" aria-hidden="true"><svg class="ic"><use href="#i-shield-check"/></svg></span>
+        <h3>Reports with teeth</h3>
+        <p>One tap, four fixed reasons, no essay required. By default a report bans the reported account immediately and permanently — they're disconnected on the spot and can't come back. Every report is kept for human review, and bad-faith bans can be reversed.</p>
+        <ul class="reasons" aria-label="Report reasons">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Misrepresented gender</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Inappropriate behaviour</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Fraud or scam</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg> Something else</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRODUCT SHOWCASE ================= -->
+<section class="section section--tight" id="showcase" aria-labelledby="showcaseTitle">
+  <div class="container">
+    <header class="sec-head sec-head--center" data-reveal>
+      <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> The product</p>
+      <h2 class="sec-title" id="showcaseTitle">Five screens. One very good night in.</h2>
+      <p class="sec-lede">Take the tour — every panel below is built the way the real app behaves.</p>
+    </header>
+
+    <div class="show" data-reveal>
+      <div class="show__tabs" role="tablist" aria-label="Product tour">
+        <button class="tab is-on" role="tab" id="tab-text" aria-controls="panel-text" aria-selected="true" data-panel="text" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><span>Text</span>
+        </button>
+        <button class="tab" role="tab" id="tab-video" aria-controls="panel-video" aria-selected="false" tabindex="-1" data-panel="video" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg><span>Video</span>
+        </button>
+        <button class="tab" role="tab" id="tab-voice" aria-controls="panel-voice" aria-selected="false" tabindex="-1" data-panel="voice" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg><span>Voice</span>
+        </button>
+        <button class="tab" role="tab" id="tab-verify" aria-controls="panel-verify" aria-selected="false" tabindex="-1" data-panel="verify" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><span>Verify</span>
+        </button>
+        <button class="tab" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1" data-panel="history" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>History</span>
+        </button>
+      </div>
+      <span class="show__progress" aria-hidden="true"><i id="showProgress"></i></span>
+
+      <div class="show__stage glass">
+        <!-- TEXT -->
+        <div class="panel is-on" role="tabpanel" id="panel-text" aria-labelledby="tab-text" data-panel="text">
+          <div class="panel__screen" aria-hidden="true">
+            <div class="screen">
+              <div class="screen__bar"><span class="screen__title">Stranger · Manila</span><span class="screen__tools"><i><svg class="ic"><use href="#i-timer"/></svg></i><i><svg class="ic"><use href="#i-flag"/></svg></i><i><svg class="ic"><use href="#i-bolt"/></svg></i></span></div>
+              <div class="screen__chat">
+                <p class="sys">Matched · text mode · disappearing messages: 24 hours</p>
+                <div class="b b--them"><p>ok, random question or deep question?</p><time>21:04</time></div>
+                <div class="b b--me"><p>Deep. It's late here and I'm feeling brave.</p><time>21:04</time></div>
+                <div class="b b--them"><p>what's something you've never said out loud?</p><time>21:05</time></div>
+                <div class="b b--me b--voice"><span class="vn"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></span><span class="vn__wave" aria-hidden="true"></span><span class="vn__time">0:11</span></div>
+                <div class="b b--them"><p>that voice note just made this 10x more real</p><time>21:06</time></div>
+                <div class="typing"><i></i><i></i><i></i></div>
+              </div>
+              <div class="screen__composer"><span>Reply…</span><i class="send"><svg class="ic"><use href="#i-arrow"/></svg></i></div>
+            </div>
+          </div>
+          <div class="panel__copy">
+            <h3>A chat that behaves like a chat</h3>
+            <p>Bordered bubbles, quoted replies, reactions, voice notes and a composer that stays out of the way. It should feel like the messenger you already love — with a stranger on the other end.</p>
+            <ul class="ticks">
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Reply, quote and delete for everyone</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Hold-to-record voice notes</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Disappearing timers per conversation</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Typing indicators, read state, sound cues</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- VIDEO -->
+        <div class="panel" role="tabpanel" id="panel-video" aria-labelledby="tab-video" data-panel="video" hidden>
+          <div class="panel__screen" aria-hidden="true">
+            <div class="screen screen--video">
+              <div class="vgrid">
+                <figure class="vcell"><img src="assets/panel-stranger.jpg" alt="Preview of a stranger in a night-time video call" loading="lazy" decoding="async" width="800" height="1200"><figcaption>Stranger</figcaption><span class="vcell__scan" aria-hidden="true"></span></figure>
+                <figure class="vcell"><img src="assets/panel-you.jpg" alt="Preview of you in a night-time video call" loading="lazy" decoding="async" width="800" height="1200"><figcaption>You</figcaption></figure>
+              </div>
+              <p class="voverlay">hey — your mic cut out for a second, you're back now</p>
+              <div class="vcontrols">
+                <span class="vbtn is-on"><svg class="ic"><use href="#i-mic"/></svg></span>
+                <span class="vbtn is-on"><svg class="ic"><use href="#i-video"/></svg></span>
+                <span class="vbtn"><svg class="ic"><use href="#i-chat"/></svg></span>
+                <span class="vbtn vbtn--skip"><svg class="ic"><use href="#i-arrow"/></svg></span>
+                <span class="vbtn vbtn--danger"><svg class="ic"><use href="#i-close"/></svg></span>
+              </div>
+            </div>
+          </div>
+          <div class="panel__copy">
+            <h3>Two panels. Zero audience.</h3>
+            <p>Equal, rounded panels — you and them, nobody bigger than anybody else. Chat text overlays cleanly, no bubbles cluttering the frame, and status toasts fade instead of stacking.</p>
+            <ul class="ticks">
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Peer-to-peer WebRTC over HTTPS</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Mutual agreement before video starts</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Skip or stop at any moment</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Works on mobile browsers, no plugin</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- VOICE -->
+        <div class="panel" role="tabpanel" id="panel-voice" aria-labelledby="tab-voice" data-panel="voice" hidden>
+          <div class="panel__screen" aria-hidden="true">
+            <div class="screen screen--voice">
+              <div class="call">
+                <span class="call__avatar avatar avatar--lg" style="--a:#6C7CF5;--b:#3b46a8">T</span>
+                <p class="call__name">Tolu · Lagos</p>
+                <p class="call__state"><span class="pulse"></span> Live voice · 03:41</p>
+                <div class="call__wave" id="callWave" aria-hidden="true"></div>
+              </div>
+              <div class="vcontrols">
+                <span class="vbtn is-on"><svg class="ic"><use href="#i-mic"/></svg></span>
+                <span class="vbtn"><svg class="ic"><use href="#i-chat"/></svg></span>
+                <span class="vbtn vbtn--danger"><svg class="ic"><use href="#i-close"/></svg></span>
+              </div>
+            </div>
+          </div>
+          <div class="panel__copy">
+            <h3>Camera-shy? Talk instead.</h3>
+            <p>Live audio-only calls run alongside the text thread, so you can keep typing while you speak. Consent-gated both ways, and your partner is told if you switch to video mid-call.</p>
+            <ul class="ticks">
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Audio-only calls with the text log open</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Voice notes when you don't want a call</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Clear notification if a mode changes</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> One tap to end, one tap to skip</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- VERIFY -->
+        <div class="panel" role="tabpanel" id="panel-verify" aria-labelledby="tab-verify" data-panel="verify" hidden>
+          <div class="panel__screen">
+            <div class="screen screen--verify">
+              <div class="vcard" role="group" aria-label="Verification clip preview — try revealing it">
+                <div class="vcard__media">
+                  <img src="assets/verify-blur.jpg" alt="Blurred verification clip awaiting consent to reveal" loading="lazy" decoding="async" width="1200" height="800" id="verifyImg">
+                  <span class="vcard__tag">Verification clip · blurred</span>
+                </div>
+                <div class="vcard__actions">
+                  <button class="btn btn--quiet btn--sm" type="button" id="verifySkip">Skip</button>
+                  <button class="btn btn--primary btn--sm" type="button" id="verifyReveal">
+                    <svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Reveal with consent
+                  </button>
+                </div>
+                <p class="vcard__note" id="verifyNote">Nothing unblurs until the person who recorded it agrees.</p>
+              </div>
+            </div>
+          </div>
+          <div class="panel__copy">
+            <h3>Proof before pixels</h3>
+            <p>Verification is a two-step dance: send a short blurred clip, then reveal only with consent. It's a deterrent against catfishing, and it puts the person who recorded it in control of what happens next.</p>
+            <ul class="ticks">
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> ~2.5s clip, identically cropped for both sides</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Reveal is a separate, opt-in step</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Misrepresented gender is a bannable offence</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Clips never appear on the video panels</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="panel" role="tabpanel" id="panel-history" aria-labelledby="tab-history" data-panel="history" hidden>
+          <div class="panel__screen" aria-hidden="true">
+            <div class="screen screen--history">
+              <div class="hist">
+                <div class="hist__head"><strong>Chats</strong><span class="hist__tools"><i><svg class="ic"><use href="#i-trash"/></svg></i></span></div>
+                <ul class="hist__list">
+                  <li class="hist__row is-active"><span class="avatar avatar--sm" style="--a:#F0568C;--b:#a8305c">A</span><span class="hist__txt"><strong>Ana <em class="on">online</em></strong><i>“ok but the wombat thing is going in my bio”</i></span><span class="hist__meta"><time>2m</time><b class="badge">3</b></span></li>
+                  <li class="hist__row"><span class="avatar avatar--sm" style="--a:#4C8DFF;--b:#2456b8">K</span><span class="hist__txt"><strong>Kenji</strong><i>Voice note · 0:14</i></span><span class="hist__meta"><time>1h</time></span></li>
+                  <li class="hist__row"><span class="avatar avatar--sm" style="--a:#2DD4BF;--b:#1a8f80">L</span><span class="hist__txt"><strong>Lena</strong><i>Offline — messages saved, read-only</i></span><span class="hist__meta"><time>3d</time></span></li>
+                  <li class="hist__row"><span class="avatar avatar--sm" style="--a:#F5A623;--b:#b06f0a">D</span><span class="hist__txt"><strong>Diego</strong><i>“next time I'm free after 9pm your time”</i></span><span class="hist__meta"><time>1w</time></span></li>
+                  <li class="hist__row"><span class="avatar avatar--sm" style="--a:#A78BFA;--b:#6d4fc4">Y</span><span class="hist__txt"><strong>Yuki</strong><i>Disappeared · once seen</i></span><span class="hist__meta"><time>2w</time></span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="panel__copy">
+            <h3>Pick up where you left off</h3>
+            <p>A Telegram-style side panel of every conversation you've had. Tap one and the messages come back — if that stranger is online right now, you're paired straight in and keep going live.</p>
+            <ul class="ticks">
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Stored against your login, not your device</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Online presence and unread counts</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Reopen a chat and resume live</li>
+              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Clear one conversation or all of them</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section class="section" id="how" aria-labelledby="howTitle">
+  <div class="container">
+    <header class="sec-head sec-head--center" data-reveal>
+      <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> How it works</p>
+      <h2 class="sec-title" id="howTitle">From bored to talking in under a minute</h2>
+      <p class="sec-lede">Three steps. No onboarding quiz, no 14 permissions, no credit card.</p>
+    </header>
+
+    <ol class="steps" data-stagger>
+      <li class="step glass spot" data-reveal>
+        <span class="step__num" aria-hidden="true">01</span>
+        <span class="ic-tile" aria-hidden="true"><svg class="ic"><use href="#i-users"/></svg></span>
+        <h3>Make a free account</h3>
+        <p>Username and password, or one tap with Google, Facebook or X. You declare your gender once — it stays locked, so matching means something.</p>
+      </li>
+      <li class="step glass spot" data-reveal>
+        <span class="step__num" aria-hidden="true">02</span>
+        <span class="ic-tile ic-tile--indigo" aria-hidden="true"><svg class="ic"><use href="#i-signal"/></svg></span>
+        <h3>Set the shape of the match</h3>
+        <p>Recommended, random, nearby or a country. Text or video. Change it whenever you like — it only applies to the next person you meet.</p>
+      </li>
+      <li class="step glass spot" data-reveal>
+        <span class="step__num" aria-hidden="true">03</span>
+        <span class="ic-tile ic-tile--pink" aria-hidden="true"><svg class="ic"><use href="#i-bolt"/></svg></span>
+        <h3>Press start</h3>
+        <p>You're paired in seconds. Skip when it's not clicking, report in one tap if it's not okay, and keep the conversation if it is.</p>
+        <a class="link-arrow" data-app-link href="#start">Start your first match <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================= BENEFITS (STICKY) ================= -->
+<section class="section section--tight" id="benefits" aria-labelledby="benefitsTitle">
+  <div class="container split">
+    <div class="split__sticky">
+      <div data-reveal>
+        <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> The benefits</p>
+        <h2 class="sec-title" id="benefitsTitle">Built for people who'd rather talk than scroll.</h2>
+        <p class="sec-lede">Every design decision here serves one outcome: two humans, one conversation, zero performance.</p>
+        <a class="btn btn--primary btn--magnetic" data-app-link href="#start">
+          <span class="btn__label">Meet someone now</span>
+          <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="split__list">
+      <article class="benefit" data-reveal>
+        <span class="benefit__ic" aria-hidden="true"><svg class="ic"><use href="#i-eye-off"/></svg></span>
+        <div>
+          <h3>Anonymous until you decide otherwise</h3>
+          <p>Use a nickname, keep your face off, hide your profile. There's no follower count to protect and no clout to lose, so people say what they actually mean.</p>
+        </div>
+      </article>
+      <article class="benefit" data-reveal>
+        <span class="benefit__ic" aria-hidden="true"><svg class="ic"><use href="#i-bolt"/></svg></span>
+        <div>
+          <h3>Instant, on whatever you're holding</h3>
+          <p>Browser-based with nothing to install — a five-year-old Android works as well as the newest phone. Matches are made in memory, so pairing is measured in seconds.</p>
+        </div>
+      </article>
+      <article class="benefit" data-reveal>
+        <span class="benefit__ic" aria-hidden="true"><svg class="ic"><use href="#i-lock"/></svg></span>
+        <div>
+          <h3>Private by architecture</h3>
+          <p>HTTPS everywhere, which your camera and mic require anyway. Video and voice run peer-to-peer over WebRTC instead of through a recording server. Nearby matching shows an area, never an address.</p>
+        </div>
+      </article>
+      <article class="benefit" data-reveal>
+        <span class="benefit__ic" aria-hidden="true"><svg class="ic"><use href="#i-shield-check"/></svg></span>
+        <div>
+          <h3>Moderated by consequences, not warnings</h3>
+          <p>Reports trigger immediate permanent bans by default, and moderators review every single one — including reversing a ban when a report turns out to be bad faith.</p>
+        </div>
+      </article>
+      <article class="benefit" data-reveal>
+        <span class="benefit__ic" aria-hidden="true"><svg class="ic"><use href="#i-heart"/></svg></span>
+        <div>
+          <h3>Conversations that can continue</h3>
+          <p>Click? Add them as a friend, keep the history, get notified when they're back online. One great chat shouldn't vanish because someone pressed skip.</p>
+        </div>
+      </article>
+      <article class="benefit" data-reveal>
+        <span class="benefit__ic" aria-hidden="true"><svg class="ic"><use href="#i-infinity"/></svg></span>
+        <div>
+          <h3>No feed to fall into</h3>
+          <p>There's nothing to scroll when a chat ends — just another person. That's the point: you leave because the conversation finished, not because you got hijacked.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SAFETY ================= -->
+<section class="section" id="safety" aria-labelledby="safetyTitle">
+  <div class="container">
+    <div class="safety glass" data-reveal>
+      <div class="safety__head">
+        <span class="safety__badge" aria-hidden="true"><svg class="ic"><use href="#i-shield"/></svg></span>
+        <div>
+          <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> Trust &amp; safety</p>
+          <h2 class="sec-title" id="safetyTitle">Safety isn't a policy page. It's the product.</h2>
+          <p class="sec-lede">Random chat has a reputation problem, and it deserves it. ShincChat was built backwards from the moderation layer — verification, consent and consequences come first, the fun comes second.</p>
+        </div>
+      </div>
+      <ul class="safety__grid" data-stagger>
+        <li class="safe" data-reveal>
+          <svg class="ic" aria-hidden="true"><use href="#i-badge"/></svg>
+          <h3>Adults only, 18+</h3>
+          <p>Accounts are gated by an age confirmation and a gender self-declaration that carries real consequences if it's wrong.</p>
+        </li>
+        <li class="safe" data-reveal>
+          <svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg>
+          <h3>Blur before reveal</h3>
+          <p>Verification clips arrive blurred. Revealing is a second, consent-gated action controlled by the person on camera.</p>
+        </li>
+        <li class="safe" data-reveal>
+          <svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg>
+          <h3>One tap, real outcome</h3>
+          <p>Report, pick a reason, done. The default policy disconnects and permanently bans the reported account on the spot.</p>
+        </li>
+        <li class="safe" data-reveal>
+          <svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>
+          <h3>Humans review everything</h3>
+          <p>Moderators can read every stored report, reverse a bad-faith ban, or switch to manual review if a wave looks suspicious.</p>
+        </li>
+        <li class="safe" data-reveal>
+          <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>
+          <h3>Encrypted, peer-to-peer</h3>
+          <p>HTTPS across the site and WebRTC for video and voice, so media flows directly between the two of you.</p>
+        </li>
+        <li class="safe" data-reveal>
+          <svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>
+          <h3>You hold the eraser</h3>
+          <p>Disappearing messages, delete-for-everyone, clear a conversation or all of them, and hide your profile from search.</p>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TESTIMONIALS ================= -->
+<section class="section section--tight" id="testimonials" aria-labelledby="testTitle">
+  <div class="container">
+    <header class="sec-head" data-reveal>
+      <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> Stories</p>
+      <h2 class="sec-title" id="testTitle">Strangers who stopped being strangers</h2>
+      <p class="sec-lede">A few of the conversations people keep telling us about.</p>
+      <div class="rating-summary" role="img" aria-label="Rated 4.8 out of 5 based on 32,418 reviews">
+        <strong>4.8</strong>
+        <span class="stars" aria-hidden="true">
+          <svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg>
+        </span>
+        <span>32,418 reviews</span>
+      </div>
+    </header>
+
+    <div class="quotes" data-stagger>
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>I pressed start on a Sunday night purely out of boredom and ended up talking to someone in Seoul for three hours. We've done it every Sunday since. Neither of us expected that.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#F0568C;--b:#a8305c" aria-hidden="true">A</span><span><strong>Ana, 24</strong><small>Lisbon, Portugal</small></span><span class="stars" role="img" aria-label="5 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>The blur-first verification sounds like a gimmick until you use it. It kills the weirdness before it starts and it means the person on the other side is a person.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#4C8DFF;--b:#2456b8" aria-hidden="true">M</span><span><strong>Marcus, 29</strong><small>Chicago, USA</small></span><span class="stars" role="img" aria-label="5 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>I reported someone once, on a hunch, and they were gone before I'd put my phone down. That's the first time I've felt like a moderation button did something.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#2DD4BF;--b:#1a8f80" aria-hidden="true">P</span><span><strong>Priya, 22</strong><small>Mumbai, India</small></span><span class="stars" role="img" aria-label="5 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>Voice notes changed everything for me. I'm not a typer and I'm not a camera person, but holding the mic and actually talking? That's how I made two real friends this year.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#F5A623;--b:#b06f0a" aria-hidden="true">D</span><span><strong>Diego, 26</strong><small>São Paulo, Brazil</small></span><span class="stars" role="img" aria-label="4 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--dim"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>Moved cities, knew nobody, didn't want to doomscroll. Ten minutes a night on here beat every app on my phone for feeling less alone.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#A78BFA;--b:#6d4fc4" aria-hidden="true">L</span><span><strong>Lena, 27</strong><small>Berlin, Germany</small></span><span class="stars" role="img" aria-label="5 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>History following my login is the underrated feature. I found someone I'd clicked with two weeks earlier, they were online, and we just carried on mid-sentence.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#6C7CF5;--b:#3b46a8" aria-hidden="true">K</span><span><strong>Kenji, 31</strong><small>Osaka, Japan</small></span><span class="stars" role="img" aria-label="5 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>As a woman on random chat sites, I usually last four minutes. Here I've never once had to argue with someone about a boundary — the consent steps do that for me.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#2DD4BF;--b:#1a8f80" aria-hidden="true">T</span><span><strong>Tolu, 24</strong><small>Lagos, Nigeria</small></span><span class="stars" role="img" aria-label="5 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+
+      <figure class="quote glass spot" data-reveal>
+        <svg class="ic quote__mark" aria-hidden="true"><use href="#i-quote"/></svg>
+        <blockquote>I use it to practise English with actual humans instead of a textbook. Nearby is off, country filter on, and I've had better conversations than in two years of classes.</blockquote>
+        <figcaption><span class="avatar avatar--sm" style="--a:#F0568C;--b:#a8305c" aria-hidden="true">S</span><span><strong>Sofía, 20</strong><small>Bogotá, Colombia</small></span><span class="stars" role="img" aria-label="4 out of 5"><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--fill"><use href="#i-star"/></svg><svg class="ic ic--dim"><use href="#i-star"/></svg></span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section class="section" id="pricing" aria-labelledby="pricingTitle">
+  <div class="container">
+    <header class="sec-head sec-head--center" data-reveal>
+      <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> Pricing</p>
+      <h2 class="sec-title" id="pricingTitle">Free to meet people. Pay only for comfort.</h2>
+      <p class="sec-lede">Matching is never paywalled. Upgrades remove ads and add control — they don't put you ahead of anyone in the queue for meeting humans.</p>
+
+      <div class="billing" data-reveal>
+        <span id="billMonthlyLabel">Monthly</span>
+        <button class="switch" id="billingSwitch" type="button" role="switch" aria-checked="false" aria-labelledby="billMonthlyLabel billAnnualLabel">
+          <span class="switch__knob" aria-hidden="true"></span>
+          <span class="sr-only">Toggle annual billing</span>
+        </button>
+        <span id="billAnnualLabel">Annual <em class="pill-pill">save 33%</em></span>
+      </div>
+    </header>
+
+    <div class="plans" data-stagger>
+      <article class="plan glass spot" data-reveal>
+        <header class="plan__head">
+          <h3>Free</h3>
+          <p class="plan__for">Everything you need to meet someone tonight.</p>
+          <p class="plan__price"><span class="cur">$</span><span class="amt" data-monthly="0" data-annual="0">0</span><span class="per">/forever</span></p>
+        </header>
+        <a class="btn btn--quiet btn--block" data-app-link href="#start">Start for free</a>
+        <ul class="plan__list">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Unlimited random matches</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Text, voice and video modes</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Blurred verification &amp; consent reveals</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> One-tap reporting</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> 30 days of chat history</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Recommended &amp; random matching</li>
+          <li class="is-off"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> Ads between matches</li>
+          <li class="is-off"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> Country &amp; nearby filters</li>
+        </ul>
+      </article>
+
+      <article class="plan plan--featured glass spot" data-reveal>
+        <span class="plan__badge">Most popular</span>
+        <div class="plan__halo" aria-hidden="true"></div>
+        <header class="plan__head">
+          <h3>Plus</h3>
+          <p class="plan__for">For people who come back most nights.</p>
+          <p class="plan__price"><span class="cur">$</span><span class="amt" data-monthly="6" data-annual="4">6</span><span class="per">/month</span></p>
+          <p class="plan__bill" data-bill-note>billed monthly · cancel anytime</p>
+        </header>
+        <a class="btn btn--primary btn--block btn--magnetic" data-app-link href="#start"><span class="btn__label">Get Plus</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        <ul class="plan__list">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Everything in Free</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> No ads, ever</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Unlimited chat history</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Priority matching — skip the queue</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Country &amp; nearby filters</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Custom profile themes &amp; badges</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Disappearing timers up to 7 days</li>
+          <li class="is-off"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg> HD video &amp; voice</li>
+        </ul>
+      </article>
+
+      <article class="plan glass spot" data-reveal>
+        <header class="plan__head">
+          <h3>Pro <span class="plan__crown" aria-hidden="true"><svg class="ic"><use href="#i-crown"/></svg></span></h3>
+          <p class="plan__for">Maximum control, best quality, gifting included.</p>
+          <p class="plan__price"><span class="cur">$</span><span class="amt" data-monthly="12" data-annual="8">12</span><span class="per">/month</span></p>
+          <p class="plan__bill" data-bill-note>billed monthly · cancel anytime</p>
+        </header>
+        <a class="btn btn--outline btn--block" data-app-link href="#start">Get Pro</a>
+        <ul class="plan__list">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Everything in Plus</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> HD video &amp; voice calls</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Rematch with the same person</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Incognito browsing &amp; hidden presence</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Read-receipt control</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> <span><svg class="ic ic--inline" aria-hidden="true"><use href="#i-gift"/></svg> 500 coins a month for gifting</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Priority human support</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Early access to new modes</li>
+        </ul>
+      </article>
+    </div>
+
+    <p class="plans__note" data-reveal>
+      <svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>
+      Prices in USD. Cancel in one tap, keep your history. Coins are a virtual gift currency with no cash value. ShincChat is for adults 18 and over.
+    </p>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="section section--tight" id="faq" aria-labelledby="faqTitle">
+  <div class="container faq-wrap">
+    <header class="sec-head" data-reveal>
+      <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> FAQ</p>
+      <h2 class="sec-title" id="faqTitle">The questions everyone asks first</h2>
+      <p class="sec-lede">Straight answers, no legal fog.</p>
+    </header>
+
+    <div class="faq" data-reveal>
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a1" id="faq-q1">Is ShincChat actually free?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a1" role="region" aria-labelledby="faq-q1"><div class="faq__a-inner"><p>Yes. Unlimited matches, all three modes, blurred verification, reporting and 30 days of history cost nothing, forever. Plus and Pro remove ads and add comfort features like priority matching, country filters, HD media and gifting coins — they never gate your ability to meet people.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a2" id="faq-q2">Do I need an account to chat?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a2" role="region" aria-labelledby="faq-q2"><div class="faq__a-inner"><p>You need a free account — username and password, or one tap with Google, Facebook or X. Accounts are what make moderation real: a report, a ban or a friendship has to attach to something that persists. It also means your history follows you between devices.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a3" id="faq-q3">How does blurred verification work?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a3" role="region" aria-labelledby="faq-q3"><div class="faq__a-inner"><p>Either person can send a roughly 2.5-second clip that arrives blurred on the other side, cropped identically for both of you. Revealing it is a separate step that only happens with consent from the person who recorded it. Clips stay in the chat log — they never appear over the video panels. It's a deterrent against misrepresentation, not a background check.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a4" id="faq-q4">Can I choose who I meet?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a4" role="region" aria-labelledby="faq-q4"><div class="faq__a-inner"><p>You choose the shape of the match: Recommended, Random, Nearby, or a specific country, plus text or video. Gender is declared once per account and locked, because honest matching is the whole premise. Country and nearby filters are a Plus feature; recommended and random matching are free for everyone.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a5" id="faq-q5">What happens if someone behaves badly?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a5" role="region" aria-labelledby="faq-q5"><div class="faq__a-inner"><p>One tap opens a report with four fixed reasons — misrepresented gender, inappropriate behaviour, fraud or scam, and other. Under the default policy, a submitted report bans the reported account immediately and permanently: they're disconnected on the spot and can't log back in. Moderators review every report and can reverse a ban if it turns out to be bad faith.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a6" id="faq-q6">Is it private? Can people see where I am?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a6" role="region" aria-labelledby="faq-q6"><div class="faq__a-inner"><p>The site runs entirely over HTTPS, which cameras and microphones require anyway, and video and voice travel peer-to-peer over WebRTC rather than through a media server. Nearby matching only ever exposes an approximate area. You can use a nickname, hide your profile, turn on disappearing messages, delete a message for everyone, or wipe whole conversations.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a7" id="faq-q7">Does it work on mobile?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a7" role="region" aria-labelledby="faq-q7"><div class="faq__a-inner"><p>It runs in any modern mobile browser — nothing to install, nothing to update. You'll be asked for camera and microphone permission the first time you use video or voice, and you can decline and stay in text mode with voice notes.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a8" id="faq-q8">Can I keep talking to someone after a match ends?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a8" role="region" aria-labelledby="faq-q8"><div class="faq__a-inner"><p>Yes — that's what history and friends are for. Open the Chats panel, tap a conversation and the messages come back. If they're online, you're paired straight in and continue live; if they're offline you can read what you had and pick it up when they return.</p></div></div>
+      </div>
+
+      <div class="faq__item">
+        <h3><button class="faq__q" type="button" aria-expanded="false" aria-controls="faq-a9" id="faq-q9">Who is ShincChat for?<svg class="ic faq__ic" aria-hidden="true"><use href="#i-plus"/></svg></button></h3>
+        <div class="faq__a" id="faq-a9" role="region" aria-labelledby="faq-q9"><div class="faq__a-inner"><p>Adults, 18 and over, who want a real conversation with someone they've never met. If you're looking for a feed, an audience or a follower count, this isn't that — and honestly you'll be happier elsewhere.</p></div></div>
+      </div>
+    </div>
+
+    <aside class="faq__aside glass" data-reveal>
+      <span class="ic-tile" aria-hidden="true"><svg class="ic"><use href="#i-mail"/></svg></span>
+      <h3>Still curious about something?</h3>
+      <p>Our support team are humans who use the product. Ask anything — safety, moderation, billing, or how a feature works.</p>
+      <a class="btn btn--outline btn--sm" href="mailto:hello@shincchat.com">Email hello@shincchat.com</a>
+    </aside>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="section cta-section" id="start" aria-labelledby="ctaTitle">
+  <div class="container">
+    <div class="cta glass" data-reveal>
+      <div class="cta__orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="eyebrow eyebrow--light"><span class="pulse" aria-hidden="true"></span> <strong data-online="12483">12,483</strong> people are online right now</p>
+      <h2 class="cta__title" id="ctaTitle">Someone interesting is <span class="grad-text">already waiting.</span></h2>
+      <p class="cta__lede">Free forever, no download, matched in about four seconds. The worst case is a story; the best case is a person you'd never have met any other way.</p>
+      <div class="cta__actions">
+        <a class="btn btn--primary btn--xl btn--magnetic" data-app-link href="#start">
+          <span class="btn__label">Start your first match</span>
+          <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>
+        </a>
+        <a class="btn btn--glass btn--xl" href="#pricing" >Compare plans</a>
+      </div>
+      <ul class="cta__assure">
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> No credit card</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> 18+ only</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Report in one tap</li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Leave any time</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <a class="brand brand--lg" href="#top" aria-label="ShincChat — home">
+          <span class="brand__mark" aria-hidden="true"><img src="assets/logo-mark.svg" alt="" width="22" height="22"></span>
+          <span class="brand__text">Shinc<em>Chat</em></span>
+        </a>
+        <p class="footer__about">Verified random chat for adults. Meet a real stranger in seconds — text, voice or video — with consent, verification and moderation built into the product rather than bolted on.</p>
+        <div class="footer__socials">
+          <a href="#" aria-label="ShincChat on X"><svg class="ic ic--fill" aria-hidden="true"><use href="#i-x"/></svg></a>
+          <a href="#" aria-label="ShincChat on Instagram"><svg class="ic" aria-hidden="true"><use href="#i-instagram"/></svg></a>
+          <a href="#" aria-label="ShincChat on TikTok"><svg class="ic ic--fill" aria-hidden="true"><use href="#i-tiktok"/></svg></a>
+          <a href="#" aria-label="ShincChat on YouTube"><svg class="ic" aria-hidden="true"><use href="#i-youtube"/></svg></a>
+        </div>
+        <p class="footer__adult" title="Adults only"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg> 18+ only · Not for minors</p>
+      </div>
+
+      <nav class="footer__cols" aria-label="Footer">
+        <div class="footer__col">
+          <h3>Product</h3>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#showcase">Product tour</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#safety">Trust &amp; safety</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#">Status</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h3>Company</h3>
+          <ul>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Press kit</a></li>
+            <li><a href="mailto:hello@shincchat.com">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h3>Community</h3>
+          <ul>
+            <li><a href="#">Community guidelines</a></li>
+            <li><a href="#safety">Report a user</a></li>
+            <li><a href="#">Safety centre</a></li>
+            <li><a href="#">Chatter stories</a></li>
+            <li><a href="#">Discord</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h3>Legal</h3>
+          <ul>
+            <li><a href="#">Terms of service</a></li>
+            <li><a href="#">Privacy policy</a></li>
+            <li><a href="#">Cookie policy</a></li>
+            <li><a href="#">18+ policy</a></li>
+            <li><a href="#">Moderation &amp; appeals</a></li>
+          </ul>
+        </div>
+      </nav>
+
+      <div class="footer__news">
+        <h3>The Sunday Stranger</h3>
+        <p>One short email a week: a real conversation from the platform, plus what we shipped. No growth hacks, no spam.</p>
+        <form class="news" id="newsForm" novalidate>
+          <label class="sr-only" for="newsEmail">Email address</label>
+          <div class="news__field">
+            <svg class="ic news__ic" aria-hidden="true"><use href="#i-mail"/></svg>
+            <input id="newsEmail" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required>
+            <button class="btn btn--primary btn--sm" type="submit">
+              <span class="btn__label">Subscribe</span>
+              <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>
+            </button>
+          </div>
+          <p class="news__msg" id="newsMsg" role="status" aria-live="polite"></p>
+        </form>
+        <p class="news__fine">By subscribing you agree to our privacy policy. Unsubscribe in one click.</p>
+      </div>
+    </div>
+
+    <div class="footer__bottom">
+      <p>© <span id="year">2026</span> ShincChat. Made for humans, not algorithms.</p>
+      <div class="footer__bottom-links">
+        <a href="#top" >Back to top</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <a href="#">Cookies</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <a href="#">Sitemap</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <label class="lang" for="langSelect"><span class="sr-only">Choose a language</span>
+          <svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg>
+          <select id="langSelect" name="lang">
+            <option value="en" selected>English</option>
+            <option value="es">Español</option>
+            <option value="pt">Português</option>
+            <option value="hi">हिन्दी</option>
+            <option value="de">Deutsch</option>
+            <option value="ja">日本語</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Back to top -->
+<button class="totop" id="toTop" type="button" aria-label="Back to top" hidden>
+  <svg class="ic" aria-hidden="true"><use href="#i-arrow-up"/></svg>
+</button>
+
+<!-- ================= DEMO MODAL (instant match preview) ================= -->
+<div class="modal" id="demoModal" hidden>
+  <div class="modal__backdrop" data-close-demo></div>
+  <div class="modal__dialog glass" role="dialog" aria-modal="true" aria-labelledby="demoTitle" aria-describedby="demoDesc">
+    <button class="modal__x" type="button" data-close-demo aria-label="Close demo">
+      <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>
+    </button>
+
+    <div class="demo" id="demoStage" data-stage="search">
+      <div class="demo__search" data-view="search">
+        <span class="radar" aria-hidden="true"><i></i><i></i><i></i><span class="radar__dot"></span></span>
+        <h3 id="demoTitle">Finding someone…</h3>
+        <p id="demoDesc">Searching 12,483 people online for a good match.</p>
+        <p class="demo__ticks"><span>Gender-matched</span><span>18+ verified</span><span>Text mode</span></p>
+      </div>
+
+      <div class="demo__match" data-view="match" hidden>
+        <span class="avatar avatar--xl" style="--a:#2DD4BF;--b:#1a8f80" aria-hidden="true">A</span>
+        <p class="demo__badge"><svg class="ic" aria-hidden="true"><use href="#i-badge"/></svg> Verified · online now</p>
+        <h3 id="demoMatchTitle">You're matched with Ana</h3>
+        <p id="demoMatchDesc">24 · Lisbon, Portugal · matched in 3.8s</p>
+        <div class="demo__chat" id="demoChat">
+          <p class="demo__bubble demo__bubble--them">ok, be honest — what's the most useless thing you know?</p>
+        </div>
+        <form class="demo__form" id="demoForm">
+          <label class="sr-only" for="demoInput">Your message</label>
+          <input id="demoInput" type="text" placeholder="Say something better than “hi”…" autocomplete="off">
+          <button class="btn btn--primary" type="submit" aria-label="Send message">
+            <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>
+          </button>
+        </form>
+        <p class="demo__note">This is an on-page preview — <a data-app-link href="#start">create your free account</a> to talk to a real person.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
+
+<script src="main.js" defer></script>
+</body>
+</html>
