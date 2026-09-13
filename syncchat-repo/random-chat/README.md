@@ -9,6 +9,24 @@ node server/index.js
 ```
 Open http://localhost:3000 in two tabs/devices to test matching.
 
+This needs `DATABASE_URL` (Supabase pooled Postgres) and the two
+`UPSTASH_REDIS_REST_*` variables in a `.env` — the server refuses to boot
+without them. See `.env.example`.
+
+### UI preview without a database
+To review the login/sign-up screen (or any front-end change) without
+provisioning Postgres and Redis:
+```
+npm install
+node dev-preview.js      # http://localhost:3000
+```
+`dev-preview.js` serves `public/` and mocks the auth endpoints
+(`/api/check-username`, `/api/signup`, `/api/login`) with in-memory users, so
+the full gate flow is clickable offline. It is a development tool only — it is
+never imported by `server/index.js` and is not part of `npm start` or the
+deploy. Accounts vanish on restart; everything past the gate (matching, video,
+history) is inert.
+
 ## Social login (Google / Facebook / X)
 
 The sign-up/login screen shows Google, Facebook, and X buttons. Each one only
