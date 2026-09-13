@@ -13,6 +13,32 @@ This needs `DATABASE_URL` (Supabase pooled Postgres) and the two
 `UPSTASH_REDIS_REST_*` variables in a `.env` — the server refuses to boot
 without them. See `.env.example`.
 
+### Full local stack (real Postgres — recommended before deploying)
+You can run the **real** `server/index.js` locally without Supabase or Upstash
+accounts. No system packages needed; Postgres ships as an npm binary.
+
+```bash
+# 1. Real PostgreSQL on port 5433
+mkdir -p /tmp/realdb && cd /tmp/realdb && npm init -y && npm install embedded-postgres
+# start it with databaseDir /tmp/realdb/pgdata, user sync / password syncpw, port 5433
+
+# 2. db.js connects with ssl:{rejectUnauthorized:false}, so give PG a self-signed cert:
+cd /tmp/realdb/pgdata
+openssl req -new -x509 -days 365 -nodes -text -out server.crt -keyout server.key -subj "/CN=localhost"
+chmod 600 server.key && echo "ssl = on" >> postgresql.conf   # then restart Postgres
+
+# 3. The cache layer only uses GET/SET/DEL over Upstash's REST API:
+node dev-upstash-shim.js    # serves that API on 127.0.0.1:8079
+
+# 4. Run the real server
+export DATABASE_URL="postgresql://sync:syncpw@127.0.0.1:5433/syncchat"
+export UPSTASH_REDIS_REST_URL="http://127.0.0.1:8079"
+export UPSTASH_REDIS_REST_TOKEN="localdev"
+node server/index.js
+```
+This exercises the genuine signup/login code — real schema, real salted
+password hashing, real sessions — so it is the check to trust before a deploy.
+
 ### UI preview without a database
 To review the login/sign-up screen (or any front-end change) without
 provisioning Postgres and Redis:
