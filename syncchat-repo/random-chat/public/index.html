@@ -455,97 +455,198 @@
   /* In-chat nudge suggesting a switch from text to video once there's been
      some back-and-forth ("confirm the vibe" before going face to face) */
 
-  /* ================= Auth gate =================
-     Two-column "product" layout: a trust/marketing rail on the left and
-     the actual form on the right. Collapses to a single column on mobile. */
-  #authGate.auth-shell {
-    width: 100%; max-width: 960px; display: grid; grid-template-columns: 1.05fr 1fr;
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg);
-    overflow: hidden; box-shadow: 0 30px 80px -28px rgba(0,0,0,.75);
-  }
-  .auth-aside {
-    position: relative; padding: 44px 40px; display: flex; flex-direction: column;
-    justify-content: space-between; gap: 32px; border-right: 1px solid var(--border-soft);
-    background:
-      radial-gradient(circle at 12% 0%, rgba(45,212,191,.16) 0%, transparent 55%),
-      radial-gradient(circle at 95% 100%, rgba(108,124,245,.18) 0%, transparent 50%),
-      var(--bg-soft);
-  }
-  .auth-aside h2 {
-    margin: 0 0 12px; font-family: var(--font-display); font-size: 30px; line-height: 1.2;
-    font-weight: 700; letter-spacing: -.02em;
-  }
-  .auth-aside .aside-sub { color: var(--muted); font-size: 14px; line-height: 1.65; margin: 0; }
-  .auth-points { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
-  .auth-points li { display: flex; gap: 12px; align-items: flex-start; font-size: 13.5px; line-height: 1.5; color: var(--text); }
-  .auth-points .pt-ic {
-    flex: none; width: 28px; height: 28px; border-radius: 9px; display: flex;
-    align-items: center; justify-content: center; font-size: 14px;
-    background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(45,212,191,.25);
-  }
-  .auth-points .pt-sub { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
-  .auth-aside-foot { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--muted-2); }
-  .auth-aside-foot .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(45,212,191,.12); }
+  /* ================= Auth gate — "Winter Serenade" =================
+     Full-bleed moonlit winter scene with a frosted glass card floating
+     over it, plus a marketing nav rail across the top. ================= */
+  body.auth-view { overflow: hidden; }
+  body.auth-view .topbar { display: none; }
+  body.auth-view .app-shell { padding: 0; align-items: stretch; }
 
-  .auth-main { padding: 44px 44px 34px; display: flex; flex-direction: column; }
-  .auth-main .auth-heading { margin: 0 0 6px; font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
-  .auth-main .auth-subheading { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 22px; }
+  .auth-scene {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    background-image: url('/assets/winter-night.jpg');
+    background-size: cover; background-position: center;
+    overflow-y: auto; z-index: 40;
+  }
+  /* Slight darkening so white type stays legible over the snow */
+  .auth-scene::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(6,14,35,.45) 0%, rgba(6,14,35,.12) 35%, rgba(6,14,35,.35) 100%);
+  }
 
-  .auth-tabs { display: flex; gap: 4px; background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 999px; padding: 4px; margin-bottom: 22px; }
+  /* Drifting snowflakes */
+  .snow-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .snow-layer i {
+    position: absolute; top: -6vh; color: #fff; opacity: .75;
+    font-size: 14px; line-height: 1; animation: snowFall linear infinite;
+    text-shadow: 0 0 6px rgba(255,255,255,.6);
+  }
+  @keyframes snowFall {
+    0%   { transform: translateY(-6vh) translateX(0) rotate(0deg); }
+    100% { transform: translateY(112vh) translateX(40px) rotate(360deg); }
+  }
+
+  /* Top nav */
+  .auth-nav {
+    position: relative; z-index: 2; width: 100%; max-width: 1320px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 26px 40px; gap: 24px;
+  }
+  .auth-nav .flake {
+    font-size: 30px; color: #fff; line-height: 1;
+    text-shadow: 0 0 14px rgba(190,225,255,.9);
+  }
+  .auth-nav-links { display: flex; align-items: center; gap: 34px; }
+  .auth-nav-links a {
+    color: #fff; text-decoration: none; font-size: 17px; font-weight: 500;
+    letter-spacing: .01em; text-shadow: 0 2px 10px rgba(0,0,0,.5);
+    transition: opacity .15s ease;
+  }
+  .auth-nav-links a:hover { opacity: .75; }
+
+  /* Centre column: card + tagline */
+  .auth-stage {
+    position: relative; z-index: 2; flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; width: 100%; padding: 10px 20px 40px;
+  }
+
+  /* Frosted card */
+  #authGate.auth-card {
+    width: 100%; max-width: 346px;
+    background: rgba(122,146,180,.30);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,.28); border-radius: 10px;
+    box-shadow: 0 26px 70px -18px rgba(0,0,0,.6);
+    overflow: hidden; color: #fff;
+  }
+  .auth-card-head {
+    padding: 13px 18px; text-align: center;
+    font-size: 17.5px; font-weight: 600; color: #fff;
+    background: rgba(150,172,203,.38);
+    border-bottom: 1px solid rgba(255,255,255,.22);
+    text-shadow: 0 1px 6px rgba(0,0,0,.35);
+  }
+  .auth-card-body { padding: 16px 22px 22px; }
+  #authGate .auth-heading {
+    margin: 0 0 14px; text-align: center; font-family: var(--font-body);
+    font-size: 27px; font-weight: 400; color: #fff; letter-spacing: .01em;
+    text-shadow: 0 2px 10px rgba(0,0,0,.4);
+  }
+
+  /* Log In / Sign Up switch */
+  .auth-tabs {
+    display: flex; gap: 4px; margin-bottom: 16px; padding: 3px;
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2);
+    border-radius: 999px;
+  }
   .auth-tab {
-    flex: 1; padding: 10px 0; border: none; border-radius: 999px; background: transparent;
-    color: var(--muted); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .15s ease;
+    flex: 1; padding: 8px 0; border: none; border-radius: 999px; cursor: pointer;
+    background: transparent; color: rgba(255,255,255,.82);
+    font-size: 13px; font-weight: 600; font-family: var(--font-body);
+    transition: all .15s ease;
   }
-  .auth-tab:hover { color: var(--text); }
-  .auth-tab.selected { background: var(--accent); color: #06110F; font-weight: 700; box-shadow: 0 4px 14px -6px rgba(45,212,191,.9); }
+  .auth-tab:hover { color: #fff; }
+  .auth-tab.selected { background: #fff; color: #1b2a44; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
 
-  #authGate .field-label { margin: 18px 0 7px; font-size: 11.5px; letter-spacing: .04em; color: var(--muted); }
-  #authGate .field-label:first-of-type { margin-top: 0; }
-  .auth-input {
-    width: 100%; padding: 13px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
-    background: var(--panel-2); color: var(--text); font-size: 14px; outline: none; font-family: var(--font-body);
-    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  /* Underline inputs with a leading icon */
+  #authGate .field-row {
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1.5px solid rgba(255,255,255,.55);
+    padding: 9px 2px; margin-bottom: 4px;
+    transition: border-color .15s ease;
   }
-  .auth-input::placeholder { color: var(--muted-2); }
-  .auth-input:hover { border-color: var(--muted-2); }
-  .auth-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,212,191,.14); background: #182133; }
-  .auth-input[type="date"] { color-scheme: dark; }
+  #authGate .field-row:focus-within { border-bottom-color: #fff; }
+  #authGate .field-row .fi {
+    flex: none; width: 17px; text-align: center; font-size: 14px;
+    color: rgba(255,255,255,.95);
+  }
+  #authGate .auth-input {
+    flex: 1; width: 100%; border: none; background: transparent; outline: none;
+    color: #fff; font-size: 15px; font-family: var(--font-body); padding: 2px 0;
+  }
+  #authGate .auth-input::placeholder { color: rgba(255,255,255,.8); }
+  #authGate .auth-input:-webkit-autofill {
+    -webkit-text-fill-color: #fff;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+  #authGate .auth-input[type="date"] { color-scheme: dark; }
+  #authGate .field-label { display: none; }
 
-  /* Password field with a show/hide affordance */
-  .input-wrap { position: relative; }
-  .input-wrap .auth-input { padding-right: 62px; }
   .pw-toggle {
-    position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
-    border: none; background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 600;
-    letter-spacing: .03em; text-transform: uppercase; cursor: pointer; padding: 6px 8px; border-radius: 8px;
+    flex: none; border: none; background: transparent; cursor: pointer;
+    color: rgba(255,255,255,.9); font-size: 15px; padding: 2px 4px; line-height: 1;
   }
-  .pw-toggle:hover { color: var(--accent); background: var(--accent-dim); }
+  .pw-toggle:hover { color: #fff; }
 
-  .auth-row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
-  .auth-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
-  .auth-check input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
-  .auth-link { background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--accent); cursor: pointer; font-family: var(--font-body); }
-  .auth-link:hover { text-decoration: underline; }
-
+  /* Primary CTA — dark slate pill like the reference */
   #authGate #authSubmitBtn {
-    width: 100%; padding: 15px; border-radius: var(--radius-sm); border: none;
-    background: linear-gradient(90deg, var(--accent-2), var(--accent)); color: #06110F;
-    font-weight: 700; font-size: 14.5px; cursor: pointer; margin-top: 22px;
-    transition: opacity .15s ease, transform .1s ease, box-shadow .15s ease;
-    box-shadow: 0 12px 28px -14px rgba(108,124,245,.9);
+    width: 100%; margin-top: 16px; padding: 13px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.18); border-radius: 7px;
+    background: #2f3944; color: #fff;
+    font-size: 15.5px; font-weight: 700; font-family: var(--font-body);
+    box-shadow: 0 8px 22px -10px rgba(0,0,0,.8);
+    transition: background .15s ease, transform .1s ease;
   }
-  #authGate #authSubmitBtn:not(:disabled):hover { opacity: .93; }
+  #authGate #authSubmitBtn:not(:disabled):hover { background: #3a4553; }
   #authGate #authSubmitBtn:not(:disabled):active { transform: scale(.99); }
-  #authGate #authSubmitBtn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
-  #authStatus { font-size: 12.5px; margin-top: 14px; color: var(--muted); min-height: 16px; line-height: 1.5; text-align: center; }
-  #authStatus.err { color: var(--danger); }
-  #authStatus.ok { color: var(--accent); }
-  .auth-legal { margin-top: auto; padding-top: 22px; font-size: 11.5px; line-height: 1.6; color: var(--muted-2); text-align: center; }
-  .auth-legal a { color: var(--muted); text-decoration: underline; }
-  .username-hint { font-size: 11.5px; margin: 7px 0 0 2px; min-height: 14px; }
-  .username-hint.ok { color: var(--accent); }
-  .username-hint.err { color: var(--danger); }
-  .username-hint.checking { color: var(--muted-2); }
+  #authGate #authSubmitBtn:disabled { opacity: .55; cursor: not-allowed; }
+
+  .auth-switch-line {
+    margin-top: 11px; text-align: center; font-size: 13.5px; color: #fff;
+    text-shadow: 0 1px 6px rgba(0,0,0,.35);
+  }
+  .auth-switch-line .auth-link {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: #cfe0f5; font-size: 13.5px; font-family: var(--font-body);
+  }
+  .auth-switch-line .auth-link:hover { text-decoration: underline; color: #fff; }
+  .auth-forgot {
+    display: block; width: 100%; margin-top: 5px; text-align: center;
+    background: none; border: none; cursor: pointer; color: #fff;
+    font-size: 13.5px; font-family: var(--font-body);
+    text-shadow: 0 1px 6px rgba(0,0,0,.35);
+  }
+  .auth-forgot:hover { text-decoration: underline; }
+
+  .auth-sep {
+    margin: 15px 0 12px; border-top: 1px solid rgba(255,255,255,.3);
+    padding-top: 12px; text-align: center; font-size: 13.5px; color: #fff;
+    text-shadow: 0 1px 6px rgba(0,0,0,.35);
+  }
+
+  /* Social buttons */
+  .social-stack { display: flex; flex-direction: column; gap: 9px; }
+  .social-btn {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; padding: 10px 12px; border-radius: 6px; cursor: pointer;
+    font-size: 14px; font-weight: 700; font-family: var(--font-body);
+    border: 1px solid rgba(255,255,255,.25);
+    transition: filter .15s ease, transform .1s ease;
+  }
+  .social-btn:hover { filter: brightness(1.06); }
+  .social-btn:active { transform: scale(.99); }
+  .social-btn.apple { background: #fff; color: #111; }
+  .social-btn.facebook { background: #5b6fc4; color: #fff; }
+  .social-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  #authStatus {
+    font-size: 12.5px; margin-top: 12px; color: #eaf2ff; min-height: 16px;
+    line-height: 1.5; text-align: center; text-shadow: 0 1px 6px rgba(0,0,0,.4);
+  }
+  #authStatus.err { color: #ffc2cb; }
+  #authStatus.ok { color: #bff5e4; }
+
+  .auth-tagline {
+    position: relative; z-index: 2; color: #fff; font-size: 17px; font-weight: 500;
+    text-align: center; text-shadow: 0 2px 12px rgba(0,0,0,.55);
+  }
+
+  .username-hint { font-size: 11.5px; margin: 4px 0 0 2px; min-height: 14px; color: #dbe7f7; }
+  .username-hint.ok { color: #9df5d5; }
+  .username-hint.err { color: #ffc2cb; }
+  .username-hint.checking { color: #cfdcee; }
 
   /* ================= Messaging: delete / reply / disappearing ================= */
   .icon-btn-sm {
@@ -1179,12 +1280,16 @@
     #gate { border-radius: var(--radius-md); max-width: 100%; margin: auto; }
     .gate-body { padding: 26px 22px; }
 
-    /* Auth: collapse to one column, keep a condensed trust header */
-    #authGate.auth-shell { grid-template-columns: 1fr; max-width: 520px; margin: auto; border-radius: var(--radius-md); }
-    .auth-aside { padding: 26px 22px 22px; border-right: none; border-bottom: 1px solid var(--border-soft); gap: 0; }
-    .auth-aside h2 { font-size: 22px; }
-    .auth-aside .auth-points, .auth-aside .auth-aside-foot { display: none; }
-    .auth-main { padding: 26px 22px 22px; }
+    /* Auth: nav condenses, card goes near-full-width under the scene */
+    .auth-nav { padding: 16px 18px; }
+    .auth-nav-links { gap: 18px; }
+    .auth-nav-links a { font-size: 14px; }
+    .auth-nav .flake { font-size: 24px; }
+    .auth-stage { padding: 6px 16px 28px; gap: 16px; }
+    #authGate.auth-card { max-width: 100%; }
+    .auth-card-body { padding: 14px 18px 18px; }
+    #authGate .auth-heading { font-size: 24px; }
+    .auth-tagline { font-size: 14.5px; }
 
     #chatScreen { gap: 10px; max-width: 100%; height: 100%; }
     .video-label { top: 8px; left: 8px; font-size: 11px; padding: 4px 9px; }
@@ -1450,101 +1555,101 @@
 
 <div class="app-shell">
 
-<!-- Auth gate: professional two-column sign-in / sign-up screen.
-     Left rail carries the trust story, right column carries the form.
-     (Accounts are what make chat history and resuming a past stranger
-     possible.) -->
-<div id="authGate" class="auth-shell">
+<!-- Auth gate: "Winter Serenade" — full-bleed moonlit scene, marketing nav,
+     and a frosted glass card. All field IDs match what app.js expects. -->
+<div class="auth-scene" id="authScene">
+  <div class="snow-layer" id="snowLayer" aria-hidden="true"></div>
 
-  <!-- Trust rail -->
-  <aside class="auth-aside">
-    <div>
-      <div class="brand auth-brand">
-        <div class="brand-mark"><img src="/assets/syncchat-logo.svg" alt=""></div>
-        <div class="brand-name">SyncChat</div>
-      </div>
-      <h2>Real conversations,<br>with real people.</h2>
-      <p class="aside-sub">A verified random chat platform built for people who want a genuine connection — not bots, not throwaway accounts.</p>
-      <ul class="auth-points">
-        <li>
-          <span class="pt-ic">&#10003;</span>
-          <span>Verified, 18+ community
-            <span class="pt-sub">Age and identity checks at sign-up keep the platform clean.</span>
-          </span>
-        </li>
-        <li>
-          <span class="pt-ic">&#9851;</span>
-          <span>Your history stays with you
-            <span class="pt-sub">Pick up a conversation with someone you already met.</span>
-          </span>
-        </li>
-        <li>
-          <span class="pt-ic">&#9679;</span>
-          <span>You control who you meet
-            <span class="pt-sub">Match nearby, by country, or anywhere in the world.</span>
-          </span>
-        </li>
-      </ul>
+  <nav class="auth-nav">
+    <div class="flake">&#10052;</div>
+    <div class="auth-nav-links">
+      <a href="#">Home</a>
+      <a href="#">About</a>
+      <a href="#">Features</a>
+      <a href="#">Contact</a>
     </div>
-    <div class="auth-aside-foot"><span class="dot"></span> Encrypted sign-in &middot; Your data is never sold</div>
-  </aside>
+  </nav>
 
-  <!-- Form -->
-  <div class="auth-main">
-    <h1 id="authTitle" class="auth-heading">Welcome back</h1>
-    <p class="auth-subheading" id="authSubheading">Log in to continue where you left off.</p>
+  <div class="auth-stage">
+    <div id="authGate" class="auth-card">
+      <div class="auth-card-head">Winter Serenade Access</div>
+      <div class="auth-card-body">
 
-    <div class="auth-tabs" role="tablist">
-      <button class="auth-tab selected" data-tab="login" id="loginTabBtn" role="tab">Log In</button>
-      <button class="auth-tab" data-tab="signup" id="signupTabBtn" role="tab">Sign Up</button>
+        <h1 id="authTitle" class="auth-heading">Sign Up</h1>
+
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab" data-tab="login" id="loginTabBtn" role="tab">Log In</button>
+          <button class="auth-tab selected" data-tab="signup" id="signupTabBtn" role="tab">Sign Up</button>
+        </div>
+
+        <!-- Log in: one combined field, same as Instagram/Facebook -->
+        <div id="loginFields" style="display:none;">
+          <div class="field-row">
+            <span class="fi">&#128100;</span>
+            <input id="authIdentifier" class="auth-input" type="text" autocomplete="username" placeholder="Username, email or phone">
+          </div>
+          <div class="field-row">
+            <span class="fi">&#128274;</span>
+            <input id="authPasswordLogin" class="auth-input" type="password" autocomplete="current-password" placeholder="Password">
+            <button type="button" class="pw-toggle" data-pw-for="authPasswordLogin" aria-label="Show password">&#128065;</button>
+          </div>
+        </div>
+
+        <!-- Sign up: name, username (live availability), email/mobile,
+             date of birth, password. -->
+        <div id="signupFields">
+          <div class="field-row">
+            <span class="fi">&#128100;</span>
+            <input id="authFullName" class="auth-input" type="text" autocomplete="name" placeholder="Name">
+          </div>
+          <div class="field-row">
+            <span class="fi">&#64;</span>
+            <input id="authUsername" class="auth-input" type="text" autocomplete="off" placeholder="Username" autocapitalize="none">
+          </div>
+          <div class="username-hint" id="usernameHint"></div>
+          <div class="field-row">
+            <span class="fi">&#9993;</span>
+            <input id="authIdentifierSignup" class="auth-input" type="text" autocomplete="username" placeholder="Email or mobile number">
+          </div>
+          <div class="field-row">
+            <span class="fi">&#127874;</span>
+            <input id="authBirthDate" class="auth-input" type="date" autocomplete="bday" placeholder="Date of birth">
+          </div>
+          <div class="field-row">
+            <span class="fi">&#128274;</span>
+            <input id="authPasswordSignup" class="auth-input" type="password" autocomplete="new-password" placeholder="Password">
+            <button type="button" class="pw-toggle" data-pw-for="authPasswordSignup" aria-label="Show password">&#128065;</button>
+          </div>
+          <div class="field-row">
+            <span class="fi">&#9654;</span>
+            <input id="authYoutubeSignup" class="auth-input" type="url" autocomplete="off" placeholder="YouTube channel (optional)">
+          </div>
+        </div>
+
+        <button id="authSubmitBtn">Create My Account</button>
+
+        <div class="auth-switch-line" id="authSwitchLine">
+          <span id="authSwitchText">Already a Member?</span>
+          <button type="button" class="auth-link" id="authSwitchBtn">Login</button>
+        </div>
+        <button type="button" class="auth-forgot" id="authForgotBtn">Forgot Password?</button>
+
+        <div id="authStatus"></div>
+
+        <div class="auth-sep">Or connect with:</div>
+        <div class="social-stack" id="socialStack">
+          <button class="social-btn apple" id="appleAuthBtn" data-provider="apple">
+            <span>&#63743;</span><span class="social-label">Sign Up With Apple</span>
+          </button>
+          <button class="social-btn facebook" id="facebookAuthBtn" data-provider="facebook">
+            <span>f</span><span class="social-label">Sign Up With Facebook</span>
+          </button>
+        </div>
+
+      </div>
     </div>
 
-    <!-- Log in: one combined field, same as Instagram/Facebook -->
-    <div id="loginFields">
-      <div class="field-label">Username, email or phone number</div>
-      <input id="authIdentifier" class="auth-input" type="text" autocomplete="username" placeholder="Username, email or phone">
-      <div class="field-label">Password</div>
-      <div class="input-wrap">
-        <input id="authPasswordLogin" class="auth-input" type="password" autocomplete="current-password" placeholder="Enter your password">
-        <button type="button" class="pw-toggle" data-pw-for="authPasswordLogin">Show</button>
-      </div>
-      <div class="auth-row-between">
-        <label class="auth-check"><input type="checkbox" id="authRemember" checked> Keep me signed in</label>
-      </div>
-    </div>
-
-    <!-- Sign up: full name, self-chosen username (live availability check),
-         a single mobile-number-or-email field (same as Instagram/Facebook),
-         date of birth, and password. -->
-    <div id="signupFields" style="display:none;">
-      <div class="field-label">Full name</div>
-      <input id="authFullName" class="auth-input" type="text" autocomplete="name" placeholder="Your name">
-
-      <div class="field-label">Username</div>
-      <input id="authUsername" class="auth-input" type="text" autocomplete="off" placeholder="username" autocapitalize="none">
-      <div class="username-hint" id="usernameHint"></div>
-
-      <div class="field-label">Mobile number or email</div>
-      <input id="authIdentifierSignup" class="auth-input" type="text" autocomplete="username" placeholder="Mobile number or email">
-
-      <div class="field-label">Date of birth <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted-2);">(you must be 18+)</span></div>
-      <input id="authBirthDate" class="auth-input" type="date" autocomplete="bday">
-
-      <div class="field-label">Password</div>
-      <div class="input-wrap">
-        <input id="authPasswordSignup" class="auth-input" type="password" autocomplete="new-password" placeholder="At least 6 characters">
-        <button type="button" class="pw-toggle" data-pw-for="authPasswordSignup">Show</button>
-      </div>
-
-      <div class="field-label">YouTube channel link <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted-2);">(optional)</span></div>
-      <input id="authYoutubeSignup" class="auth-input" type="url" autocomplete="off" placeholder="https://youtube.com/@yourchannel">
-      <div class="username-hint">Adding this helps other people trust that you're a real person.</div>
-    </div>
-
-    <button id="authSubmitBtn">Log In</button>
-    <div id="authStatus"></div>
-
-    <div class="auth-legal">By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</div>
+    <div class="auth-tagline">Discover Connection Under the Starlit Sky.</div>
   </div>
 </div>
 <!-- Gate: shown right after login/signup. First a one-time gender

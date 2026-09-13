@@ -177,18 +177,23 @@ function setAuthMode(mode) {
   authMode = mode;
   document.getElementById('loginTabBtn').classList.toggle('selected', mode === 'login');
   document.getElementById('signupTabBtn').classList.toggle('selected', mode === 'signup');
-  authSubmitBtn.textContent = mode === 'login' ? 'Log In' : 'Create Account';
+  authSubmitBtn.textContent = mode === 'login' ? 'Log In' : 'Create My Account';
   document.getElementById('loginFields').style.display = mode === 'login' ? 'block' : 'none';
   document.getElementById('signupFields').style.display = mode === 'signup' ? 'block' : 'none';
-  // Headline copy follows the tab, so the screen always reads intentionally.
+  // Headline + switch/social copy follow the tab.
   const titleEl = document.getElementById('authTitle');
-  const subEl = document.getElementById('authSubheading');
-  if (titleEl) titleEl.textContent = mode === 'login' ? 'Welcome back' : 'Create your account';
-  if (subEl) {
-    subEl.textContent = mode === 'login'
-      ? 'Log in to continue where you left off.'
-      : 'It takes less than a minute. Your chat history is saved to your account.';
-  }
+  if (titleEl) titleEl.textContent = mode === 'login' ? 'Login' : 'Sign Up';
+  const switchText = document.getElementById('authSwitchText');
+  const switchBtn = document.getElementById('authSwitchBtn');
+  if (switchText) switchText.textContent = mode === 'login' ? 'Not a Member yet?' : 'Already a Member?';
+  if (switchBtn) switchBtn.textContent = mode === 'login' ? 'Sign Up' : 'Login';
+  const verb = mode === 'login' ? 'Log In' : 'Sign Up';
+  document.querySelectorAll('#socialStack .social-label').forEach((el) => {
+    el.textContent = `${verb} With ${el.closest('.social-btn').classList.contains('apple') ? 'Apple' : 'Facebook'}`;
+  });
+  // "Forgot Password?" only makes sense when logging in.
+  const forgotBtn = document.getElementById('authForgotBtn');
+  if (forgotBtn) forgotBtn.style.display = mode === 'login' ? 'block' : 'none';
   authStatusEl.textContent = '';
   authStatusEl.className = '';
   // Focus the first field of the visible form for a keyboard-friendly flow.
@@ -217,8 +222,69 @@ document.querySelectorAll('#authGate .auth-input').forEach((input) => {
     }
   });
 });
+// "Already a Member? Login" / "Not a Member yet? Sign Up" toggles the same tabs.
+const authSwitchBtnEl = document.getElementById('authSwitchBtn');
+if (authSwitchBtnEl) {
+  authSwitchBtnEl.addEventListener('click', () => setAuthMode(authMode === 'login' ? 'signup' : 'login'));
+}
+
+const authForgotBtnEl = document.getElementById('authForgotBtn');
+if (authForgotBtnEl) {
+  authForgotBtnEl.addEventListener('click', () => {
+    authStatusEl.textContent = 'Password reset is coming soon — contact support for now.';
+    authStatusEl.className = '';
+  });
+}
+
+// Social sign-in: only offer providers the server actually has configured.
+// Without credentials the buttons stay visible but explain themselves rather
+// than dead-ending on a broken redirect.
+document.querySelectorAll('#socialStack .social-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const provider = btn.dataset.provider;
+    if (btn.dataset.enabled === '1') {
+      window.location.href = `/auth/${provider}`;
+    } else {
+      authStatusEl.textContent = `${provider === 'apple' ? 'Apple' : 'Facebook'} sign-in isn't configured yet. Use email or mobile above.`;
+      authStatusEl.className = 'err';
+    }
+  });
+});
+(async () => {
+  try {
+    const res = await fetch('/api/oauth-providers');
+    const data = await res.json();
+    const list = data.providers || [];
+    document.querySelectorAll('#socialStack .social-btn').forEach((btn) => {
+      if (list.includes(btn.dataset.provider)) btn.dataset.enabled = '1';
+    });
+  } catch (e) { /* leave them in the "not configured" state */ }
+})();
+
+// Drifting snow over the winter scene (decorative only).
+(function initSnow() {
+  const layer = document.getElementById('snowLayer');
+  if (!layer) return;
+  const FLAKES = ['\u2744', '\u2745', '\u2746'];
+  for (let i = 0; i < 45; i++) {
+    const f = document.createElement('i');
+    f.textContent = FLAKES[i % FLAKES.length];
+    f.style.left = Math.random() * 100 + '%';
+    f.style.fontSize = (7 + Math.random() * 13).toFixed(1) + 'px';
+    f.style.opacity = (0.25 + Math.random() * 0.55).toFixed(2);
+    f.style.animationDuration = (9 + Math.random() * 14).toFixed(1) + 's';
+    f.style.animationDelay = (-Math.random() * 20).toFixed(1) + 's';
+    layer.appendChild(f);
+  }
+})();
+
+document.body.classList.add('auth-view');
+
 document.getElementById('loginTabBtn').addEventListener('click', () => setAuthMode('login'));
 document.getElementById('signupTabBtn').addEventListener('click', () => setAuthMode('signup'));
+
+// Land on Sign Up — the winter landing page leads with creating an account.
+setAuthMode('signup');
 
 // Live username availability check while typing — same UX as Instagram's
 // green-check/red-x under the username field at signup.
@@ -308,6 +374,9 @@ function onAuthenticated(token, user) {
   currentUser = user;
   localStorage.setItem('syncchat_token', token);
   socket.emit('auth', { token });
+  const sceneEl = document.getElementById('authScene');
+  if (sceneEl) sceneEl.style.display = 'none';
+  document.body.classList.remove('auth-view');
   authGateEl.style.display = 'none';
   gateEl.style.display = 'block';
   historyBtn.style.display = 'flex';
