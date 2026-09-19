@@ -10,6 +10,8 @@ const counters = {
   socket_messages_relayed_total: 0,
   matches_made_total: 0,
   media_uploads_total: 0,
+  verify_clips_deleted_total: 0,
+  media_sweep_errors_total: 0,
   db_errors_total: 0
 };
 

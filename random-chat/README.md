@@ -46,7 +46,9 @@ command from the repo root — see the root `docker-compose.yml`,
   same matching semantics).
 - **Media in object storage** — voice messages, verify clips and profile
   photos upload via presigned URLs (S3/R2, `server/media.js`) or a local
-  disk fallback; sockets carry storage keys, not base64 payloads.
+  disk fallback; sockets carry storage keys, not base64 payloads. Verify
+  clips are ephemeral (never part of chat history) and auto-delete after
+  `VERIFY_CLIP_TTL_SEC` (default 1 h); voice messages and photos are kept.
 - **Rate limiting** — per-IP buckets on REST routes, a stricter bucket on
   login/signup (each attempt costs an async scrypt hash), per-socket event
   limits that kick flooding clients.

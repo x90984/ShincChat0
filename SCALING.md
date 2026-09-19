@@ -78,6 +78,13 @@ widening instead of immediately.
 
 ### Known trade-offs (deliberate)
 
+- **Verify clips auto-expire** (default 1 h, `VERIFY_CLIP_TTL_SEC`): they're
+  ephemeral by design — relayed live, never part of chat history — so their
+  objects are deleted by a background sweeper (`media_sweep` in media.js;
+  storage stays bounded no matter how many clips are exchanged). Only edge
+  affected: a verify card still on screen in a session *longer* than the TTL
+  may stop re-buffering its loop. Voice messages and profile photos are
+  **never** auto-deleted (they belong to history/profiles).
 - **Crash detection ≤ ~5 min.** A worker that dies takes its sockets with
   it; partners detect the dead side via pair-key TTL + heartbeat, and stale
   queue entries are swept. No client sees a hang longer than that.
@@ -174,7 +181,12 @@ assets.
       "AllowedMethods": ["PUT", "GET"],
       "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
    ```
-4. Put the values in `.env` (`S3_ENDPOINT` is the S3 API endpoint shown in
+4. Belt-and-braces retention rule (Settings → Object lifecycle rules):
+   expire objects with the prefix `media/verify/` after **1 day**. The app
+   already deletes verify clips itself (default 1 h), but a bucket rule is
+   restart-proof and costs nothing. **Do not** add lifecycle rules for
+   `media/voice/` or `media/photo/` — those are chat history and profiles.
+5. Put the values in `.env` (`S3_ENDPOINT` is the S3 API endpoint shown in
    the bucket overview), `docker compose up -d` again.
 
 **TURN for video (do this — a large share of mobile users need it):**
@@ -236,6 +248,12 @@ buckets in `state.js` deliberately make easy.
   blast radius; keep it in a password manager).
 - Keys are unguessable capability tokens (128-bit UUIDs) — same model as
   presigned S3 URLs. Messages only deliver keys to participants.
+- **Retention:** verify clips (the most sensitive media — actual video of
+  users) auto-delete after `VERIFY_CLIP_TTL_SEC` (default 1 h), and a
+  bucket lifecycle rule can cap that at 1 day as a backstop. Voice messages
+  and photos persist until the user deletes the message / clears the chat
+  (or you add an explicit retention policy — decide what your privacy
+  policy claims and set both accordingly).
 - Admin panel: run it under the compose `admin` profile and keep it
   unexposed (SSH tunnel), or front it with Cloudflare Access.
 - The report → auto-ban policy is one click = permanent ban. At scale this

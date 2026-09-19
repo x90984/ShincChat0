@@ -59,6 +59,10 @@ services:
       S3_BUCKET: ${S3_BUCKET:-}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      # Verify clips are ephemeral — objects under media/verify/ are
+      # auto-deleted after this TTL (voice messages / photos are kept).
+      VERIFY_CLIP_TTL_SEC: ${VERIFY_CLIP_TTL_SEC:-3600}
+      MEDIA_SWEEP_SEC: ${MEDIA_SWEEP_SEC:-300}
       # Optional — TURN for video behind strict NATs (Cloudflare Realtime
       # TURN or self-hosted coturn; see SCALING.md).
       TURN_URLS: ${TURN_URLS:-}

@@ -52,6 +52,105 @@ const TYPES = {
 
 const KEY_RE = /^media\/(voice|verify|photo)\/[A-Za-z0-9-]{1,64}\/[A-Za-z0-9-]{8,64}\.(webm|ogg|mp3|m4a|mp4|jpg|png|webp)$/;
 
+// ---- Verify-clip retention -------------------------------------------------
+// Verify clips are ephemeral by design: they're relayed live during a chat
+// and never stored in message history (unlike voice messages) or profiles
+// (unlike photos). The objects would otherwise pile up in storage forever.
+// A periodic sweep deletes anything under media/verify/ older than the TTL.
+// Voice (media/voice/) and photos (media/photo/) are NEVER touched.
+const VERIFY_PREFIX = 'media/verify/';
+const VERIFY_TTL_SEC = parseInt(process.env.VERIFY_CLIP_TTL_SEC, 10); // NaN → default below
+const VERIFY_TTL_DEFAULT_SEC = 3600; // 1 hour — covers the live flow + reveal comfortably
+const SWEEP_INTERVAL_SEC = Math.max(5, parseInt(process.env.MEDIA_SWEEP_SEC, 10) || 300);
+let sweepTimer = null;
+let metricsRef = null; // set in mount()
+
+function verifyTtlMs() {
+  const ttl = Number.isFinite(VERIFY_TTL_SEC) ? VERIFY_TTL_SEC : VERIFY_TTL_DEFAULT_SEC;
+  return ttl > 0 ? ttl * 1000 : 0; // 0 disables the sweeper entirely
+}
+
+async function sweepVerifyLocal() {
+  const fsPromises = fs.promises;
+  const root = path.join(MEDIA_DIR, VERIFY_PREFIX);
+  const cutoff = Date.now() - verifyTtlMs();
+
+  async function walk(dir, depth) {
+    if (depth > 4) return; // media/verify/<userId>/<file> is 2 levels — paranoia cap
+    let entries;
+    try { entries = await fsPromises.readdir(dir, { withFileTypes: true }); }
+    catch (e) { return; } // no verify dir yet — nothing to do
+    for (const ent of entries) {
+      const p = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        await walk(p, depth + 1);
+        fsPromises.rmdir(p).catch(() => {}); // best-effort cleanup of emptied user dirs
+      } else if (ent.isFile()) {
+        try {
+          const st = await fsPromises.stat(p);
+          if (st.mtimeMs < cutoff) {
+            await fsPromises.unlink(p);
+            if (metricsRef) metricsRef.inc('verify_clips_deleted_total');
+          }
+        } catch (e) { /* raced with a concurrent delete — fine */ }
+      }
+    }
+  }
+  await walk(root, 0);
+}
+
+async function sweepVerifyS3() {
+  const { ListObjectsV2Command, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
+  const cutoff = Date.now() - verifyTtlMs();
+  const doomed = [];
+  let token;
+  do {
+    const res = await getS3().send(new ListObjectsV2Command({
+      Bucket: S3_BUCKET, Prefix: VERIFY_PREFIX, ContinuationToken: token, MaxKeys: 1000
+    }));
+    for (const obj of res.Contents || []) {
+      if (obj.LastModified && obj.LastModified.getTime() < cutoff) doomed.push({ Key: obj.Key });
+    }
+    token = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (token);
+  for (let i = 0; i < doomed.length; i += 1000) {
+    const batch = doomed.slice(i, i + 1000);
+    await getS3().send(new DeleteObjectsCommand({ Bucket: S3_BUCKET, Delete: { Objects: batch } }));
+    if (metricsRef) metricsRef.inc('verify_clips_deleted_total', batch.length);
+  }
+}
+
+/**
+ * Start the verify-clip retention sweeper. Call once after mount(); pass
+ * the shared Redis client (when REDIS_URL is configured) so only one
+ * worker per round does the listing/deleting — without Redis (single
+ * process) there is nothing to coordinate.
+ */
+function startVerifySweeper(redisClient) {
+  if (sweepTimer) return;
+  if (verifyTtlMs() <= 0) {
+    console.log('Verify-clip sweeper: disabled (VERIFY_CLIP_TTL_SEC<=0)');
+    return;
+  }
+  const run = async () => {
+    try {
+      if (redisClient) {
+        const lock = await redisClient.set('sc:lock:media-sweep', '1', 'EX', Math.max(5, SWEEP_INTERVAL_SEC - 5), 'NX')
+          .catch(() => null); // Redis hiccup → still sweep (deletes are idempotent)
+        if (!lock) return;
+      }
+      if (s3Configured) await sweepVerifyS3();
+      else await sweepVerifyLocal();
+    } catch (e) {
+      if (metricsRef) metricsRef.inc('media_sweep_errors_total');
+      console.error('Verify-clip sweep failed:', e.message);
+    }
+  };
+  sweepTimer = setInterval(run, SWEEP_INTERVAL_SEC * 1000);
+  sweepTimer.unref();
+  console.log(`Verify-clip sweeper: deleting media/verify/ objects older than ${verifyTtlMs() / 1000}s (every ${SWEEP_INTERVAL_SEC}s)`);
+}
+
 function isValidKey(key, type) {
   if (typeof key !== 'string' || key.length > 200) return false;
   if (!KEY_RE.test(key)) return false;
@@ -112,6 +211,7 @@ function ensureMediaDir() {
 
 function mount(app, { requireAuth, asyncRoute, metrics }) {
   const express = require('express');
+  metricsRef = metrics || null;
 
   /**
    * Begin an upload. Returns where to PUT/POST the bytes.
@@ -219,4 +319,4 @@ async function deleteObject(key) {
   if (p) fs.unlink(p, () => { /* best effort */ });
 }
 
-module.exports = { mount, isValidKey, deleteObject, s3Configured };
+module.exports = { mount, isValidKey, deleteObject, s3Configured, startVerifySweeper };

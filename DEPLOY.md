@@ -119,6 +119,8 @@ WEB_CONCURRENCY=4 npm run start:cluster      # 4 workers on one port
 # tests
 node tests/smoke.js                          # 31 end-to-end checks
 BASE=http://a:3000 BASE2=http://b:3000 node tests/smoke.js   # cross-node
+node tests/verify-expiry.js                  # verify-clip TTL retention
+                                             # (spawns its own server)
 ```
 
 HTTPS matters in production: camera/microphone access (video mode) and

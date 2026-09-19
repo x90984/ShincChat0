@@ -1067,6 +1067,11 @@ const PORT = process.env.PORT || 3000;
     });
     server.listen(PORT, () => {
       console.log(`Random chat server running on port ${PORT} (state: ${state.backend})`);
+      // Verify-clip retention: deletes media/verify/ objects older than
+      // VERIFY_CLIP_TTL_SEC (default 1h). Shares the state layer's Redis
+      // client so only one worker sweeps per round. Voice messages and
+      // profile photos are not touched — they belong to history/profiles.
+      media.startVerifySweeper(state.redis);
     });
   } catch (e) {
     console.error('Failed to start:', e);
