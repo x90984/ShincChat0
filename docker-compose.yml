@@ -1,0 +1,115 @@
+# ShincChat — full stack for one VM (the $0 deployment target).
+#
+#   cp .env.example .env    # then edit SESSION_SECRET (+ DOMAIN if you have one)
+#   docker compose up -d --build
+#   docker compose up -d --scale app=4      # more workers = more capacity
+#
+# What's in here:
+#   postgres — the database (data survives restarts in the pgdata volume)
+#   redis    — shared state: matching queues, presence, pairs, cache
+#   app      — the ShincChat server, one container per worker (scale at will)
+#   caddy    — TLS + load balancer in front of all app replicas
+#
+# Media (voice messages / verify clips / photos) defaults to a local volume;
+# set the S3_* vars in .env to move it to Cloudflare R2 (10 GB free, zero
+# egress fees) so it survives redeploys and never touches the app workers.
+name: shincchat
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shinc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shinc}
+      POSTGRES_DB: shincchat
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shinc -d shincchat"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    # Never expose Postgres publicly; reach it from the host with
+    #   docker compose exec postgres psql -U shinc -d shincchat
+
+  redis:
+    image: redis:7-alpine
+    # Ephemeral by design: this Redis holds live state (queues, presence,
+    # pairs) and a small cache — nothing that must survive a restart.
+    command: >
+      redis-server --save "" --appendonly no
+      --maxmemory 768mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+
+  app:
+    build: ./random-chat
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://shinc:${POSTGRES_PASSWORD:-shinc}@postgres:5432/shincchat
+      PG_SSL: "false"
+      PG_POOL_MAX: ${PG_POOL_MAX:-10}
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env — required for multi-worker logins}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      MEDIA_DIR: /data/media
+      # Optional — Cloudflare R2 (or any S3-compatible store) for media.
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-auto}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      # Optional — TURN for video behind strict NATs (Cloudflare Realtime
+      # TURN or self-hosted coturn; see SCALING.md).
+      TURN_URLS: ${TURN_URLS:-}
+      TURN_SECRET: ${TURN_SECRET:-}
+      TURN_STATIC_USER: ${TURN_STATIC_USER:-}
+      TURN_STATIC_CRED: ${TURN_STATIC_CRED:-}
+    volumes:
+      - media:/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  # Internal admin panel — NOT exposed by default. To use it:
+  #   docker compose exec admin node server.js   # or uncomment 'ports' and
+  # restrict access (firewall / SSH tunnel / Cloudflare Access).
+  admin:
+    build: ./admin-panel
+    environment:
+      DATABASE_URL: postgres://shinc:${POSTGRES_PASSWORD:-shinc}@postgres:5432/shincchat
+      PG_SSL: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["admin"]
+    # ports:
+    #   - "127.0.0.1:4000:4000"
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-:80}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:
+  caddy_data:
+  caddy_config:

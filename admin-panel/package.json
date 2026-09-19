@@ -1,0 +1,17 @@
+{
+  "name": "syncchat-admin-panel",
+  "version": "1.0.0",
+  "description": "Standalone admin panel for ShincChat — users/bans/reports, ads, premium plans, and monetization settings. Points at the same Postgres database as the main app (DATABASE_URL).",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.13.1"
+  }
+}

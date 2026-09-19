@@ -1,0 +1,62 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# IMPORTANT (free plan math): a workspace gets 750 free instance-hours per
+# month. ONE always-on free web service uses ~744 h — so exactly one free
+# service can run 24/7. Deploying two (as an earlier version of this file
+# did) suspends both mid-month. This file therefore deploys only the main
+# app; the admin panel runs better against a local copy or the docker-compose
+# stack anyway (see DEPLOY.md).
+#
+# Free-tier realities for THIS service:
+#   - 512 MB RAM / 0.1 CPU, single instance, sleeps after 15 idle minutes
+#     (a minute of cold start on the next request; cron-job.org ping /health
+#     to keep it awake if you want)
+#   - no persistent disk → use external Postgres (Supabase) + Redis (Upstash)
+#     + S3 media (R2), which is what the env vars below are for
+#   - realistic ceiling: a few thousand concurrent connections, then it's
+#     out of free-tier territory → move to the docker-compose stack on a VM
+#     (SCALING.md has the numbers and the migration path)
+
+services:
+  - type: web
+    name: shincchat
+    runtime: node
+    plan: free
+    rootDir: random-chat
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.1
+      # ---- Required ----
+      - key: DATABASE_URL
+        sync: false          # Supabase "Transaction" pooler string (port 6543)
+      - key: SESSION_SECRET
+        sync: false          # openssl rand -hex 32
+      # ---- Recommended on free (no local Redis available) ----
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      # ---- Optional: S3 media (Cloudflare R2) ----
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      # ---- Optional: Google sign-in ----
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: OAUTH_BASE_URL
+        sync: false          # set after first deploy, e.g. https://shincchat.onrender.com
+      # ---- Optional: TURN for video behind strict NATs ----
+      - key: TURN_URLS
+        sync: false
+      - key: TURN_SECRET
+        sync: false

@@ -1,0 +1,13 @@
+{
+  "name": "shincchat-loadtest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Load generator for ShincChat — signup/connect/match/message at scale, and report latencies. Run it against a staging server, never production.",
+  "main": "load.js",
+  "scripts": {
+    "start": "node load.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}
