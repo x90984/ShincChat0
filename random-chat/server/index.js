@@ -34,17 +34,15 @@ const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
 
-// ---- Socket.IO: tuned for a many-connections-per-process deployment ----
-//   transports: websocket only — the HTTP long-polling fallback doubles the
-//     connection work per client and is the first thing to fall over.
-//   perMessageDeflate off — compression costs ~30% CPU per message for chat
-//     payloads that are tiny anyway.
-//   maxHttpBufferSize: 64 KB — text chat needs a fraction of this. (Media
-//     used to ride through here as base64; it now goes to object storage —
-//     see media.js.)
+// ---- Socket.IO -------------------------------------------------------------
+// The stock frontend is untouched: it connects with default settings
+// (HTTP long-polling first, then upgrades to WebSocket) and still sends
+// voice messages / verify clips as base64 over the socket. So the server
+// keeps the original transport set and 8 MB buffer, and only turns off
+// per-message compression (engine.io default anyway) — cheaper CPU per
+// message with zero client-visible difference.
 const io = new Server(server, {
-  transports: ['websocket'],
-  maxHttpBufferSize: 64 * 1024,
+  maxHttpBufferSize: 8e6,
   perMessageDeflate: false,
   pingInterval: 25_000,
   pingTimeout: 20_000
@@ -60,7 +58,7 @@ if (process.env.REDIS_URL) {
   io.adapter(createAdapter(pub, sub));
 }
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '8mb' })); // the stock client still sends profile photos as inline data URLs
 
 // Rate limits: cheap global bucket for every /api route, a stricter one for
 // the auth routes (each login attempt costs an scrypt hash on the CPU).
@@ -428,11 +426,8 @@ app.post('/api/users/:id/unfollow', requireAuth, asyncRoute(async (req, res) => 
 // ---- Profile ----
 app.post('/api/profile', requireAuth, asyncRoute(async (req, res) => {
   const { displayName, bio, photo, youtubeLink } = req.body || {};
-  // `photo` may be a storage key (media/photo/... — new flow) or a legacy
-  // data URL (client-side compressed). Keep the data-URL path bounded.
-  if (photo && typeof photo === 'string' && photo.startsWith('data:') && photo.length > 500_000) {
-    return res.status(400).json({ error: 'Photo too large — please re-upload.' });
-  }
+  // `photo` from the stock client is an inline data URL (client-compressed);
+  // size rules live in db.updateProfile exactly as before.
   try {
     const user = await db.updateProfile(req.userId, { displayName, bio, photo, youtubeLink });
     res.json({ user: db.publicUser(user) });
@@ -908,11 +903,15 @@ io.on('connection', (socket) => {
   relay('webrtc-ice-candidate', (pair, payload) => io.to(pair.partnerSocketId).emit('webrtc-ice-candidate', payload));
   relay('verify-request', (pair) => io.to(pair.partnerSocketId).emit('verify-request'));
   relay('viewing-profile', (pair, payload) => io.to(pair.partnerSocketId).emit('partner-viewing-profile', { viewing: !!(payload && payload.viewing) }));
+  // Verify clips: the stock client sends { video: <data URL> } and renders
+  // the same. Clips are relay-only (never persisted, never stored) — they
+  // consume no server storage at all. { key } (a media.js storage key from
+  // an API client) is accepted too.
   relay('verify-video', (pair, payload) => {
-    // New flow: { key } (a storage key from media.js). Legacy data-URL
-    // relaying is closed — clips are far too big to route through every
-    // worker's event loop.
-    if (payload && typeof payload.key === 'string' && media.isValidKey(payload.key, 'verify')) {
+    if (!payload || typeof payload !== 'object') return;
+    if (typeof payload.video === 'string' && payload.video.length > 0) {
+      io.to(pair.partnerSocketId).emit('verify-video', { video: payload.video });
+    } else if (typeof payload.key === 'string' && media.isValidKey(payload.key, 'verify')) {
       io.to(pair.partnerSocketId).emit('verify-video', { key: payload.key });
     }
   });
@@ -924,18 +923,40 @@ io.on('connection', (socket) => {
   relay('voice-response', (pair, payload) => io.to(pair.partnerSocketId).emit('voice-response', payload));
   relay('voice-end', (pair) => io.to(pair.partnerSocketId).emit('voice-end'));
 
-  socket.on('voice-message', ({ key }) => {
+  // Voice messages: the stock client sends { audio: <data URL> } and renders
+  // the same. To keep base64 out of Postgres, the backend decodes the audio
+  // to object storage (or local disk) and stores just the key — and if that
+  // offload fails, falls back to storing the data URL inline exactly like
+  // the original app. The relay always carries the ORIGINAL payload, so the
+  // client contract is identical either way. API clients may also send a
+  // storage key directly ({ key }).
+  socket.on('voice-message', ({ audio, key }) => {
     if (!allowEvent()) return;
     (async () => {
-      if (typeof key !== 'string' || !media.isValidKey(key, 'voice')) return;
       const pair = await state.pairOf(socket.id);
       if (!pair) return;
       const senderId = socketUser.get(socket.id);
 
-      let payload = { id: null, ts: Date.now(), audio: key };
+      const relayValue = typeof audio === 'string' && audio.length > 0
+        ? audio
+        : (typeof key === 'string' && media.isValidKey(key, 'voice') ? key : null);
+      if (!relayValue) return;
+      if (relayValue.length > 8_000_000) return; // same ceiling the socket buffer enforces
+
+      let stored = relayValue;
+      if (relayValue.startsWith('data:') && senderId) {
+        try {
+          stored = await media.storeDataUrl(relayValue, 'voice', senderId);
+        } catch (e) {
+          // Storage unavailable → original inline behaviour (base64 in the row).
+          stored = relayValue;
+        }
+      }
+
+      let payload = { id: null, ts: Date.now(), audio: relayValue };
       if (pair.convId && senderId) {
-        const msg = await db.addMessage(pair.convId, { senderId, type: 'voice', audio: key });
-        payload = { id: msg.id, ts: msg.ts, audio: key };
+        const msg = await db.addMessage(pair.convId, { senderId, type: 'voice', audio: stored });
+        payload = { id: msg.id, ts: msg.ts, audio: relayValue };
       }
       socket.emit('voice-message', { ...payload, self: true });
       io.to(pair.partnerSocketId).emit('voice-message', { ...payload, self: false });

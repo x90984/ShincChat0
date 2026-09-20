@@ -39,7 +39,9 @@ Then, before real traffic:
 
 - **Media → Cloudflare R2** (10 GB free, zero egress fees, survives
   redeploys): bucket + S3 token + CORS rule, then the `S3_*` vars in
-  `.env`. Full walkthrough in SCALING.md §5.
+  `.env`. The frontend is unchanged — the server decodes the base64 voice
+  messages it receives into R2 and re-inlines them on history reads.
+  Full walkthrough in SCALING.md §5.
 - **TURN for video** (`TURN_URLS`/`TURN_SECRET`): without it, users behind
   symmetric NATs (a large share of mobile data connections) can't do
   video. Cloudflare Realtime TURN includes 1 TB/month free.
@@ -88,8 +90,9 @@ few thousand concurrent connections.
    - `UPSTASH_REDIS_REST_URL` / `..._TOKEN` — Upstash Redis REST creds
      (the cache backend when there's no local Redis; free tier is
      ~500k commands/month, fine for small traffic)
-   - Optionally `S3_*` (Cloudflare R2 — strongly recommended; the free
-     Supabase DB fills with ~500 inline verify clips), `TURN_*`,
+   - Optionally `S3_*` (Cloudflare R2 — strongly recommended; without it
+     voice messages fall back to inline base64 in Postgres, and the free
+     Supabase DB fills after a few hundred of them), `TURN_*`,
      `GOOGLE_CLIENT_*` + `OAUTH_BASE_URL` (set after the first deploy
      gives you the URL).
 4. Custom domain: Render → Settings → Custom Domain (HTTPS automatic);
@@ -117,7 +120,7 @@ REDIS_URL=redis://localhost:6379 npm start   # Redis state (multi-worker mode)
 WEB_CONCURRENCY=4 npm run start:cluster      # 4 workers on one port
 
 # tests
-node tests/smoke.js                          # 31 end-to-end checks
+node tests/smoke.js                          # 36 end-to-end checks
 BASE=http://a:3000 BASE2=http://b:3000 node tests/smoke.js   # cross-node
 node tests/verify-expiry.js                  # verify-clip TTL retention
                                              # (spawns its own server)

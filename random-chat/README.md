@@ -44,11 +44,16 @@ command from the repo root — see the root `docker-compose.yml`,
   of workers (or machines) share one matcher; pairing is an atomic Lua
   claim. Without `REDIS_URL` it falls back to in-memory (single process,
   same matching semantics).
-- **Media in object storage** — voice messages, verify clips and profile
-  photos upload via presigned URLs (S3/R2, `server/media.js`) or a local
-  disk fallback; sockets carry storage keys, not base64 payloads. Verify
-  clips are ephemeral (never part of chat history) and auto-delete after
-  `VERIFY_CLIP_TTL_SEC` (default 1 h); voice messages and photos are kept.
+- **Media offload, backend-only (frontend untouched)** — the stock client
+  still sends voice messages as base64 data URLs and renders data URLs
+  back; the server decodes them into object storage (S3/R2,
+  `server/media.js`) or a local disk fallback and re-inlines them as data
+  URLs whenever history is read, so Postgres stores ~40-byte keys instead
+  of MB-sized base64. Presigned uploads are also available for API clients.
+  Verify clips are relay-only (never stored with the stock client; API
+  uploads auto-delete after `VERIFY_CLIP_TTL_SEC`, default 1 h). Profile
+  photos stay inline in Postgres, exactly as the original app stored them.
+  Voice messages and photos are never auto-deleted.
 - **Rate limiting** — per-IP buckets on REST routes, a stricter bucket on
   login/signup (each attempt costs an async scrypt hash), per-socket event
   limits that kick flooding clients.
@@ -69,9 +74,9 @@ SCALING.md for the methodology and bigger-VM expectations).
 - No content moderation beyond the report system — the auto-ban policy
   **will** be weaponized at scale; budget for a moderation queue (the admin
   panel's report review is the starting point).
-- Verify clips/voice messages are unencrypted at rest in R2 — add a
-  lifecycle rule and decide on a retention policy that matches your
-  privacy claims.
+- Voice messages are unencrypted at rest in R2 — add a lifecycle rule and
+  decide on a retention policy that matches your privacy claims (verify
+  clips aren't stored with the stock client; API uploads expire after 1 h).
 
 ## Layout & features
 - **Accounts & chat history**: sign up / log in (username + password) right when you land. Your account, past conversations, and every text/voice message are stored server-side in a local SQLite database (`server/data/syncchat.db`) — not in the browser — so history follows your login rather than the device. Click the **History** button (top bar, after logging in) to open a Telegram-style side panel of past conversations; click one to reopen it with prior messages restored. If that stranger is currently online, you're paired directly and can keep chatting live; if they're offline, you see the saved messages read-only with a banner explaining they're not currently reachable.

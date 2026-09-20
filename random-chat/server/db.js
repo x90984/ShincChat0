@@ -574,9 +574,16 @@ async function shapeMessage(row, viewerId, disappearingMode) {
       replyPreview = { id: replied.id, senderId: replied.sender_id, text: replied.type === 'voice' ? 'Voice message' : replied.text };
     }
   }
+  // Voice messages may be stored as object-storage keys (the backend
+  // offloads them transparently); the client renders data URLs, so re-inline
+  // them on read. Legacy rows already hold data URLs and pass through.
+  let audio = deleted ? null : row.audio;
+  if (audio && media.isStoredKey(audio, 'voice')) {
+    audio = await media.readDataUrl(audio);
+  }
   return {
     id: row.id, type: deleted ? 'text' : row.type,
-    text: deleted ? null : row.text, audio: deleted ? null : row.audio,
+    text: deleted ? null : row.text, audio,
     ts: Number(row.ts), mine: row.sender_id === viewerId, deleted,
     seenAt: row.seen_at ? Number(row.seen_at) : null, replyTo: replyPreview
   };

@@ -43,9 +43,11 @@ const MEDIA_DIR = process.env.MEDIA_DIR
 const MEDIA_URL_TTL_SEC = parseInt(process.env.MEDIA_URL_TTL_SEC, 10) || 600; // 10 min
 const MAX_UPLOAD_BYTES = parseInt(process.env.MAX_UPLOAD_BYTES, 10) || 8 * 1024 * 1024;
 
-// Per-type limits (bytes) and the content types we accept per type.
+// Per-type limits (bytes) and the content types we accept per type. Voice
+// messages ride through the socket as base64 from the stock client, so the
+// voice cap matches what an 8 MB socket buffer can carry (~6 MB decoded).
 const TYPES = {
-  voice: { maxBytes: 3 * 1024 * 1024, contentTypes: { 'audio/webm': '.webm', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3', 'audio/mp4': '.m4a' } },
+  voice: { maxBytes: 6 * 1024 * 1024, contentTypes: { 'audio/webm': '.webm', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3', 'audio/mp4': '.m4a' } },
   verify: { maxBytes: 6 * 1024 * 1024, contentTypes: { 'video/webm': '.webm', 'video/mp4': '.mp4' } },
   photo: { maxBytes: 4 * 1024 * 1024, contentTypes: { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' } }
 };
@@ -209,6 +211,117 @@ function ensureMediaDir() {
   fs.mkdirSync(MEDIA_DIR, { recursive: true });
 }
 
+// ---- Server-side store/read of data URLs ----------------------------------
+// The stock frontend is unchanged: it still sends voice messages as base64
+// data URLs over the socket and renders whatever it receives. To keep
+// Postgres lean anyway, the backend transparently decodes those payloads to
+// object storage and re-inlines them as data URLs whenever messages are
+// read back (history). From the client's point of view nothing differs.
+
+/** Parse 'data:<mime>[;params];base64,<payload>' → { baseMime, fullMime, buf }. */
+function parseDataUrl(dataUrl) {
+  if (typeof dataUrl !== 'string') throw new Error('Not a data URL.');
+  const commaIdx = dataUrl.indexOf(',');
+  if (commaIdx < 0) throw new Error('Unsupported data URL (base64 only).');
+  const header = dataUrl.slice(0, commaIdx);
+  if (!header.endsWith(';base64')) throw new Error('Unsupported data URL (base64 only).');
+  const fullMime = header.slice(5, -7);             // e.g. 'audio/webm;codecs=opus'
+  const baseMime = fullMime.split(';')[0];          // e.g. 'audio/webm'
+  const buf = Buffer.from(dataUrl.slice(commaIdx + 1), 'base64');
+  return { baseMime, fullMime, buf };
+}
+
+// Hydration restores a data-URL prefix appropriate to the media type (the
+// type is embedded in the key), so a stored voice message reads back as
+// data:audio/webm;... exactly like the client originally sent it.
+const MIME_BY_TYPE_EXT = {
+  voice: { '.webm': 'audio/webm', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4' },
+  verify: { '.webm': 'video/webm', '.mp4': 'video/mp4' },
+  photo: { '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' }
+};
+
+/** Decode a data URL and store it; returns the storage key. */
+async function storeDataUrl(dataUrl, type, userId) {
+  const { baseMime, fullMime, buf } = parseDataUrl(dataUrl);
+  const spec = TYPES[type];
+  if (!spec) throw new Error('Unknown media type.');
+  const ext = spec.contentTypes[baseMime];
+  if (!ext) throw new Error(`Unsupported content type for ${type}: ${baseMime}`);
+  if (buf.length === 0) throw new Error('Empty payload.');
+  if (buf.length > spec.maxBytes) throw new Error('Payload too large.');
+
+  const key = `media/${type}/${userId}/${crypto.randomUUID()}${ext}`;
+  if (s3Configured) {
+    const { PutObjectCommand } = require('@aws-sdk/client-s3');
+    await getS3().send(new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, Body: buf, ContentType: fullMime }));
+  } else {
+    const p = localPathForKey(key);
+    if (!p) throw new Error('Invalid key.');
+    ensureMediaDir();
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, buf);
+  }
+  if (metricsRef) metricsRef.inc('media_uploads_total');
+  return key;
+}
+
+// Immutable objects → safe to cache the hydrated data URLs forever, with a
+// byte budget so a worker's memory stays bounded (FIFO eviction).
+const hydrateCache = new Map(); // key -> dataUrl
+let hydrateCacheBytes = 0;
+const HYDRATE_CACHE_MAX_BYTES = parseInt(process.env.MEDIA_HYDRATE_CACHE_MB, 10) * 1024 * 1024 || 64 * 1024 * 1024;
+
+function cacheHydrated(key, dataUrl) {
+  if (hydrateCache.has(key)) return;
+  const bytes = Buffer.byteLength(dataUrl);
+  if (bytes > HYDRATE_CACHE_MAX_BYTES) return; // one huge object — don't cache
+  hydrateCache.set(key, dataUrl);
+  hydrateCacheBytes += bytes;
+  while (hydrateCacheBytes > HYDRATE_CACHE_MAX_BYTES && hydrateCache.size > 1) {
+    const oldest = hydrateCache.keys().next().value;
+    hydrateCacheBytes -= Buffer.byteLength(hydrateCache.get(oldest));
+    hydrateCache.delete(oldest);
+  }
+}
+
+/**
+ * Read a stored object back as a data URL (what the stock client renders).
+ * Returns null if the object can't be read (deleted, storage hiccup).
+ */
+async function readDataUrl(key) {
+  if (!isValidKey(key)) return null;
+  const cached = hydrateCache.get(key);
+  if (cached) return cached;
+
+  let buf = null;
+  let mime = null;
+  if (s3Configured) {
+    const { GetObjectCommand } = require('@aws-sdk/client-s3');
+    const res = await getS3().send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+    mime = res.ContentType || null;
+    const chunks = [];
+    for await (const chunk of res.Body) chunks.push(chunk);
+    buf = Buffer.concat(chunks);
+  } else {
+    const p = localPathForKey(key);
+    if (!p) return null;
+    try { buf = fs.readFileSync(p); } catch (e) { return null; }
+    const typeSeg = key.split('/')[1];
+    const ext = path.extname(p).toLowerCase();
+    mime = (MIME_BY_TYPE_EXT[typeSeg] && MIME_BY_TYPE_EXT[typeSeg][ext]) || null;
+  }
+  if (!buf || !mime) return null;
+  const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+  cacheHydrated(key, dataUrl);
+  return dataUrl;
+}
+
+/** True when a value stored in a message's audio column is a storage key
+ *  (rather than a legacy inline base64 data URL). */
+function isStoredKey(value, type) {
+  return typeof value === 'string' && !value.startsWith('data:') && isValidKey(value, type);
+}
+
 function mount(app, { requireAuth, asyncRoute, metrics }) {
   const express = require('express');
   metricsRef = metrics || null;
@@ -314,9 +427,10 @@ function mount(app, { requireAuth, asyncRoute, metrics }) {
 /** Best-effort object deletion (called when a message is deleted for everyone). */
 async function deleteObject(key) {
   if (!isValidKey(key)) return;
+  hydrateCache.delete(key); // stale hydration would outlive the object otherwise
   if (s3Configured) { await s3Delete(key); return; }
   const p = localPathForKey(key);
   if (p) fs.unlink(p, () => { /* best effort */ });
 }
 
-module.exports = { mount, isValidKey, deleteObject, s3Configured, startVerifySweeper };
+module.exports = { mount, isValidKey, deleteObject, s3Configured, startVerifySweeper, storeDataUrl, readDataUrl, isStoredKey };

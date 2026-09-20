@@ -130,16 +130,40 @@ async function main() {
   ok('partner receives message', mRecv.self === false && mRecv.text === 'hi back', mRecv);
   ok('sender gets self echo', fEcho.self === true && fEcho.text === 'hi back', fEcho);
 
-  // ---- voice message with storage key ----
-  const fVoiceP = waitFor(fSocket, 'voice-message');
-  mSocket.emit('voice-message', { key: up.data.key });
-  const fVoice = await fVoiceP;
-  ok('voice message key relayed', fVoice.audio === up.data.key && fVoice.self === false, fVoice);
+  // ---- voice messages (stock client contract) ----
+  // (a) the stock client sends a base64 data URL — it must relay VERBATIM
+  const fakeVoiceDataUrl = 'data:audio/webm;base64,' + fakeAudio.toString('base64');
+  const fVoiceUrlP = waitFor(fSocket, 'voice-message');
+  mSocket.emit('voice-message', { audio: fakeVoiceDataUrl });
+  const fVoiceUrl = await fVoiceUrlP;
+  ok('voice message (data URL) relayed verbatim', fVoiceUrl.audio === fakeVoiceDataUrl && fVoiceUrl.self === false, fVoiceUrl && { audio: fVoiceUrl.audio.slice(0, 40) });
+  ok('voice message (data URL) got a db id', typeof fVoiceUrl.id === 'string' && fVoiceUrl.id.length > 10, fVoiceUrl);
 
-  // legacy data-URL voice message must be REJECTED (payload guard)
-  const fVoiceReject = waitFor(fSocket, 'voice-message', 2500).then(() => true).catch(() => false);
-  mSocket.emit('voice-message', { key: 'data:audio/webm;base64,AAAA' });
-  ok('data-URL voice message rejected', !(await fVoiceReject));
+  // (b) API clients may send a storage key — relays as-is
+  const fVoiceKeyP = waitFor(fSocket, 'voice-message');
+  mSocket.emit('voice-message', { key: up.data.key });
+  const fVoiceKey = await fVoiceKeyP;
+  ok('voice message (storage key) relayed', fVoiceKey.audio === up.data.key && fVoiceKey.self === false, fVoiceKey);
+
+  // (c) junk payloads are ignored
+  const fVoiceJunk = waitFor(fSocket, 'voice-message', 2500).then(() => true).catch(() => false);
+  mSocket.emit('voice-message', { audio: 42 });
+  ok('junk voice message ignored', !(await fVoiceJunk));
+
+  // ---- verify clip (stock client contract): data URL relayed verbatim ----
+  const fakeClipDataUrl = 'data:video/webm;base64,' + Buffer.from('fake-verify-clip').toString('base64');
+  const fVerifyP = waitFor(fSocket, 'verify-video');
+  mSocket.emit('verify-video', { video: fakeClipDataUrl });
+  const fVerify = await fVerifyP;
+  ok('verify clip relayed verbatim', fVerify.video === fakeClipDataUrl, fVerify && { video: fVerify.video.slice(0, 40) });
+
+  // ---- history: the data-URL voice message reads back byte-identical ----
+  // (backend stores audio in object storage + re-inlines on read; the
+  // client must never see the difference)
+  const histMsgs = await api(BASE, `/api/history/${fMatched.conversationId}/messages`, { token: male.data.token });
+  const hydratedVoice = histMsgs.data.messages.find(m => m.type === 'voice' && m.audio && m.audio.startsWith('data:audio/webm'));
+  ok('history re-inlines stored voice audio byte-identically', !!hydratedVoice && hydratedVoice.audio === fakeVoiceDataUrl,
+    hydratedVoice && { audio: hydratedVoice.audio.slice(0, 40), id: hydratedVoice.id });
 
   // ---- mark-seen ----
   const mSeenP = waitFor(mSocket, 'messages-seen');
@@ -167,6 +191,11 @@ async function main() {
   ok('friend request accepted', accept.status === 200 && accept.data.status === 'accepted', accept.data);
   const friends = await api(BASE, '/api/friends', { token: male.data.token });
   ok('friends list (single query) has partner', friends.status === 200 && friends.data.friends.some(f => f.id === female.data.user.id), friends.data);
+
+  // ---- profile photo (stock client): inline data URL round-trip ----
+  const fakePhoto = 'data:image/jpeg;base64,' + Buffer.from('fake-jpeg-bytes').toString('base64');
+  const profSave = await api(BASE, '/api/profile', { method: 'POST', token: male.data.token, body: { displayName: 'Smoke Male', bio: 'x', photo: fakePhoto } });
+  ok('profile photo saved and served back inline', profSave.status === 200 && profSave.data.user.photoUrl === fakePhoto, profSave.data.user && { photoUrl: profSave.data.user.photoUrl.slice(0, 40) });
 
   // ---- partner-left on disconnect ----
   const fLeftP = waitFor(fSocket, 'partner-left');

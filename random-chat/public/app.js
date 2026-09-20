@@ -1,77 +1,4 @@
-const socket = io({ transports: ['websocket'] });
-
-// ---- Media storage ---------------------------------------------------------
-// Voice messages, verify clips and profile photos live in object storage
-// (S3-compatible or the server's local fallback). Sockets only ever carry
-// tiny storage keys; this resolves keys to short-lived fetch URLs and
-// uploads blobs before referencing them.
-const mediaUrlCache = new Map(); // key -> { url, expiresAt }
-
-async function resolveMediaUrls(keys) {
-  const now = Date.now();
-  const needed = [...new Set(keys)].filter(k => k && typeof k === 'string' && !k.startsWith('data:'));
-  const missing = needed.filter(k => {
-    const hit = mediaUrlCache.get(k);
-    return !hit || hit.expiresAt < now + 5000;
-  });
-  if (missing.length) {
-    try {
-      const res = await fetch('/api/media/urls', {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keys: missing.slice(0, 50) })
-      });
-      const data = await res.json();
-      const expiresAt = Date.now() + Math.max(30, (data.ttlSec || 600) - 30) * 1000;
-      for (const [k, url] of Object.entries(data.urls || {})) if (url) mediaUrlCache.set(k, { url, expiresAt });
-    } catch (e) { /* offline — cached URLs remain usable */ }
-  }
-}
-
-// Accepts a storage key OR a legacy data: URL; resolves to something an
-// <audio>/<video>/<img> src can use (null while unresolved).
-async function mediaSrc(src) {
-  if (!src) return null;
-  if (src.startsWith('data:')) return src;
-  await resolveMediaUrls([src]);
-  const hit = mediaUrlCache.get(src);
-  return hit ? hit.url : null;
-}
-
-// Profile photos may arrive as storage keys (media/photo/...) or legacy
-// data URLs. Render sites emit <img data-photo-src="...">; this hydrates
-// them wherever they appear, so no render path needs to know the difference.
-let photoHydrationQueued = false;
-function hydratePhotos() {
-  document.querySelectorAll('img[data-photo-src]').forEach(img => {
-    const src = img.dataset.photoSrc;
-    delete img.dataset.photoSrc;
-    if (!src) return;
-    if (src.startsWith('data:')) img.src = src;
-    else mediaSrc(src).then(url => { if (url) img.src = url; });
-  });
-}
-const photoObserver = new MutationObserver(() => {
-  if (photoHydrationQueued) return;
-  photoHydrationQueued = true;
-  requestAnimationFrame(() => { photoHydrationQueued = false; hydratePhotos(); });
-});
-photoObserver.observe(document.body, { childList: true, subtree: true });
-
-// Upload a recorded blob; returns the storage key to reference it by.
-async function uploadMedia(blob, type) {
-  const contentType = blob.type || 'application/octet-stream';
-  const res = await fetch('/api/media/upload-url', {
-    method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, contentType })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Upload failed.');
-  const up = await fetch(data.url, { method: data.method || 'PUT', headers: data.headers || {}, body: blob });
-  if (!up.ok) throw new Error('Upload failed.');
-  return data.key;
-}
+const socket = io();
 
 let localStream = null;
 let pc = null;
@@ -1284,14 +1211,9 @@ socket.on('partner-left', () => {
 });
 
 // ---- WebRTC ----
-// ICE servers come from /api/ice: STUN always, plus TURN when the server is
-// configured with credentials (needed for users behind symmetric NATs).
 const rtcConfig = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
-fetch('/api/ice').then(r => r.json()).then(({ iceServers }) => {
-  if (Array.isArray(iceServers) && iceServers.length) rtcConfig.iceServers = iceServers;
-}).catch(() => {});
 
 // audioOnly is used for the text-mode "Voice" feature — same pc/signaling
 // channel, just without a video track attached.
@@ -1489,29 +1411,27 @@ function recordVerifyClip() {
   }
   const chunks = [];
   recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-  recorder.onstop = async () => {
+  recorder.onstop = () => {
     const blob = new Blob(chunks, { type: 'video/webm' });
-    try {
-      const key = await uploadMedia(blob, 'verify');
-      socket.emit('verify-video', { key });
-      showVerifyClip(key, true);
-    } catch (e) {
-      addMessage('Couldn\'t send the verification clip — try again.', 'system');
-    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      socket.emit('verify-video', { video: reader.result });
+      showVerifyClip(reader.result, true);
+    };
+    reader.readAsDataURL(blob);
   };
   recorder.start();
   setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop(); }, 2500);
 }
 
-function showVerifyClip(src, isMine) {
+function showVerifyClip(dataUrl, isMine) {
   const card = document.createElement('div');
   card.className = 'verify-card';
   card.innerHTML = `
     <div>${isMine ? 'Your clip (sent, still blurred to them until they reveal)' : "Partner's clip (blurred)"}</div>
-    <video autoplay loop muted playsinline class="${isMine ? 'mine' : ''}"></video>
+    <video src="${dataUrl}" autoplay loop muted playsinline class="${isMine ? 'mine' : ''}"></video>
     ${isMine ? '' : '<div class="actions"><button class="reveal-btn">Request Reveal</button></div>'}
   `;
-  mediaSrc(src).then(url => { if (url) card.querySelector('video').src = url; });
   if (!isMine) {
     card.querySelector('.reveal-btn').addEventListener('click', () => {
       socket.emit('reveal-request');
@@ -1524,9 +1444,9 @@ function showVerifyClip(src, isMine) {
   if (!isMine) pendingVerifyCard = card;
 }
 
-socket.on('verify-video', ({ key, video }) => {
+socket.on('verify-video', ({ video }) => {
   if (chatMode === 'video') return;
-  showVerifyClip(key || video, false);
+  showVerifyClip(video, false);
 });
 
 socket.on('reveal-request', () => {
@@ -1586,14 +1506,13 @@ function startVoiceMessageRecording() {
     recordingHint.classList.remove('show');
     if (voiceChunks.length === 0) return;
     const blob = new Blob(voiceChunks, { type: 'audio/webm' });
-    // Uploaded to storage first; the socket only carries the key. Rendered
-    // from the server echo below (like text messages) so it gets a real id
-    // for delete support.
-    uploadMedia(blob, 'voice').then(key => {
-      socket.emit('voice-message', { key });
-    }).catch(() => {
-      addMessage('Couldn\'t send the voice message — try again.', 'system');
-    });
+    const reader = new FileReader();
+    reader.onload = () => {
+      socket.emit('voice-message', { audio: reader.result });
+      // Rendered from the server echo below (like text messages) so it
+      // gets a real id for delete support, instead of optimistically here.
+    };
+    reader.readAsDataURL(blob);
   };
   voiceRecorder.start();
   isRecordingMsg = true;
@@ -1612,13 +1531,13 @@ micBtn.addEventListener('pointerup', stopVoiceMessageRecording);
 micBtn.addEventListener('pointerleave', stopVoiceMessageRecording);
 micBtn.addEventListener('pointercancel', stopVoiceMessageRecording);
 
-function addVoiceMessage(src, isMine, opts = {}) {
+function addVoiceMessage(dataUrl, isMine, opts = {}) {
   const wrap = document.createElement('div');
   wrap.className = `msg ${isMine ? 'self' : 'partner'} voice-msg`;
   if (opts.id) wrap.dataset.id = opts.id;
   const audio = document.createElement('audio');
   audio.controls = true;
-  if (src) mediaSrc(src).then(url => { if (url) audio.src = url; });
+  audio.src = dataUrl;
   wrap.appendChild(audio);
   if (opts.id) wrap.addEventListener('click', (e) => {
     if (e.target.closest('audio')) return; // let the player's own controls work
@@ -2001,7 +1920,7 @@ function renderReviewsPartner() {
 
   const p = data.partner;
   const initial = (p.displayName || p.username || '?').charAt(0).toUpperCase();
-  const avatarInner = p.photoUrl ? `<img data-photo-src="${p.photoUrl}" alt="">` : initial;
+  const avatarInner = p.photoUrl ? `<img src="${p.photoUrl}" alt="">` : initial;
   reviewsPartnerHead.innerHTML = `
     <div class="reviews-partner-avatar">${avatarInner}</div>
     <div class="reviews-partner-name">${escapeHtml(p.displayName || p.username || 'Stranger')}</div>
@@ -2423,7 +2342,7 @@ function renderHistoryList(conversations) {
 function smallAvatarHtml(u, extra = '') {
   const genderClass = u.gender === 'female' ? 'female' : 'male';
   const initial = (u.displayName || u.username || '?').charAt(0).toUpperCase();
-  const inner = u.photoUrl ? `<img data-photo-src="${u.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initial;
+  const inner = u.photoUrl ? `<img src="${u.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initial;
   return `<div class="history-avatar ${genderClass}">${inner}${extra}</div>`;
 }
 
@@ -2641,7 +2560,7 @@ function renderAvatarBtn() {
   const genderClass = currentUser.gender === 'female' ? 'female' : 'male';
   const initial = (currentUser.displayName || currentUser.username || '?').charAt(0).toUpperCase();
   btn.className = `avatar-btn ${genderClass}`;
-  btn.innerHTML = currentUser.photoUrl ? `<img data-photo-src="${currentUser.photoUrl}" alt="">` : initial;
+  btn.innerHTML = currentUser.photoUrl ? `<img src="${currentUser.photoUrl}" alt="">` : initial;
 }
 
 const sideMenu = document.getElementById('sideMenu');
@@ -2654,7 +2573,7 @@ function openSideMenu() {
   const genderClass = currentUser.gender === 'female' ? 'female' : 'male';
   const initial = (currentUser.displayName || currentUser.username || '?').charAt(0).toUpperCase();
   avatarEl.className = `side-menu-avatar ${genderClass}`;
-  avatarEl.innerHTML = currentUser.photoUrl ? `<img data-photo-src="${currentUser.photoUrl}" alt="">` : initial;
+  avatarEl.innerHTML = currentUser.photoUrl ? `<img src="${currentUser.photoUrl}" alt="">` : initial;
   document.getElementById('sideMenuName').textContent = currentUser.displayName || currentUser.username;
   sideMenuBackdrop.classList.add('show');
   sideMenu.classList.add('show');
@@ -2801,7 +2720,7 @@ function avatarLgHtml(u) {
   const genderClass = u.gender === 'female' ? 'female' : 'male';
   const initial = (u.displayName || u.username || '?').charAt(0).toUpperCase();
   return u.photoUrl
-    ? `<div class="profile-avatar-lg ${genderClass}"><img data-photo-src="${u.photoUrl}" alt=""></div>`
+    ? `<div class="profile-avatar-lg ${genderClass}"><img src="${u.photoUrl}" alt=""></div>`
     : `<div class="profile-avatar-lg ${genderClass}">${initial}</div>`;
 }
 
@@ -3023,12 +2942,7 @@ function renderEditProfile(u) {
     statusEl.textContent = 'Saving...';
     try {
       const body = { displayName: document.getElementById('editNameInput').value.trim(), bio: bioInput.value.trim(), youtubeLink: document.getElementById('editYoutubeInput').value.trim() };
-      if (pendingPhoto) {
-        // The preview is a compressed data URL — upload it as a blob and
-        // send the storage key (keeps base64 out of the DB and the API).
-        const blob = await (await fetch(pendingPhoto)).blob();
-        body.photo = await uploadMedia(blob, 'photo');
-      }
+      if (pendingPhoto) body.photo = pendingPhoto;
       const res = await fetch('/api/profile', {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body)
       });

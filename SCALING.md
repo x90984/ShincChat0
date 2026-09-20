@@ -44,9 +44,9 @@ work bought: the app's state no longer lives in one process.
                                   ▼       ▼
                           ┌──────────┐  ┌──────────┐   ┌──────────────┐
                           │  Redis   │  │ Postgres │   │ R2 / S3      │
-                          │ queues,  │  │ users,   │   │ voice msgs,  │
-                          │ pairs,   │  │ convos,  │   │ verify clips │
-                          │ presence │  │ messages │   │ (presigned)  │
+                          │ queues,  │  │ users,   │   │ voice msgs   │
+                          │ pairs,   │  │ convos,  │   │ (offloaded   │
+                          │ presence │  │ messages │   │ server-side) │
                           └──────────┘  └──────────┘   └──────────────┘
                                  video calls: peer-to-peer WebRTC
                                  (TURN relay only when NATs force it)
@@ -57,14 +57,14 @@ work bought: the app's state no longer lives in one process.
 | Sessions in a `Map` — every restart logged everyone out; a second process broke logins | Stateless HS256 JWTs (`server/session.js`) — survive restarts, work across N workers |
 | Matching queues/pairs/presence in process memory — **the app could only ever be one process** | `server/state.js` with two backends: in-memory (single process, exact old semantics) and Redis (any number of workers; atomic Lua pairing claims; per-gender × per-country bucket ZSETs; FIFO like before) |
 | Socket.IO emits only reached sockets on the same process | `@socket.io/redis-adapter` carries every emit cross-worker |
-| Voice messages / verify clips / photos as base64 **through the socket and into Postgres TEXT** (≈1 MB per verify clip; a 500 MB free DB is full after ~500 clips) | Presigned uploads to S3-compatible storage (Cloudflare R2: 10 GB free, **zero egress fees**) with a signed local-disk fallback; sockets carry ~40-byte keys; `maxHttpBufferSize` cut from 8 MB to 64 KB |
+| Voice messages as base64 **through the socket and into Postgres TEXT** (500 MB free DB = a few hundred voice messages) | Backend-only offload, **frontend untouched**: voice data-URLs are decoded server-side into S3-compatible storage (Cloudflare R2: 10 GB free, **zero egress fees**; signed local-disk fallback) and re-inlined as data URLs when history is read — Postgres stores ~40-byte keys instead of MB-sized base64 (inline-base64 fallback in PG if storage fails = original behaviour). Verify clips are relay-only: with the stock client they're **never persisted at all**; a TTL sweeper covers direct API uploads. Socket/HTTP limits stay at the original 8 MB (base64 still transits the socket, as the stock client sends it) |
 | Upstash Redis **required at boot** — but free tier is ~500k commands/**month**, exhausted in a day by the per-request user cache | Cache layer picks the best backend: local Redis → Upstash (if that's all you have) → in-process LRU. Nothing external is required on the VM stack |
 | `scryptSync` on login blocked the event loop ~50 ms per attempt | Async scrypt (plus per-IP + per-identifier login rate limits) |
 | `/api/history`: 3 DB queries per conversation (60+ round-trips for 20 chats); same N+1 pattern in friends/search/contacts/recent-partners | Single-query batched versions (`listConversationsDetailed`, `friendStatusBatch`, `getReviewsForUsers`, …) |
 | OAuth login state in a `Map` — fails ~50% of the time behind a load balancer | Signed short-lived httpOnly cookie — any worker can complete the callback |
 | Admin panel still on SQLite (`better-sqlite3`) — broken since the Postgres move | Ported to `pg`, points at the same `DATABASE_URL` |
 | WebRTC STUN-only — video silently fails behind symmetric NAT (very common on mobile data in India) | `GET /api/ice` serves STUN + TURN credentials (HMAC time-limited scheme — Cloudflare Realtime TURN or coturn `use-auth-secret`) |
-| HTTP long-polling allowed (2× connection overhead), `perMessageDeflate` burning ~30% CPU | WebSocket-only transport, compression off, 25s/20s ping timeouts |
+| `perMessageDeflate` burning ~30% CPU | Compression off, 25s/20s ping timeouts. Transports stay at the Socket.IO **defaults** (long-polling fallback kept) — the stock client connects with `io()` defaults and nothing in the frontend may change |
 | No metrics, no rate limits, no cluster mode | `/metrics` (Prometheus text), `/health` (DB-aware), token-bucket limiters per IP/event, `server/boot.js` cluster bootstrap, Dockerfile + compose + Caddy |
 
 **Matching semantics preserved** (verified by test): opposite-gender FIFO by
@@ -78,13 +78,14 @@ widening instead of immediately.
 
 ### Known trade-offs (deliberate)
 
-- **Verify clips auto-expire** (default 1 h, `VERIFY_CLIP_TTL_SEC`): they're
-  ephemeral by design — relayed live, never part of chat history — so their
-  objects are deleted by a background sweeper (`media_sweep` in media.js;
-  storage stays bounded no matter how many clips are exchanged). Only edge
-  affected: a verify card still on screen in a session *longer* than the TTL
-  may stop re-buffering its loop. Voice messages and profile photos are
-  **never** auto-deleted (they belong to history/profiles).
+- **Verify clips consume no storage with the stock client** (relayed live
+  over the socket, never persisted). Clips sent through the direct API
+  auto-expire (default 1 h, `VERIFY_CLIP_TTL_SEC`) via a background sweeper
+  (`media_sweep` in media.js), so storage stays bounded no matter how clips
+  arrive. Only edge affected: an API-uploaded verify card still on screen in
+  a session *longer* than the TTL may stop re-buffering its loop. Voice
+  messages and profile photos are **never** auto-deleted (they belong to
+  history/profiles).
 - **Crash detection ≤ ~5 min.** A worker that dies takes its sockets with
   it; partners detect the dead side via pair-key TTL + heartbeat, and stale
   queue entries are swept. No client sees a hang longer than that.
@@ -140,7 +141,7 @@ test users afterwards with
 |---|---|---|---|
 | **Oracle Cloud Always Free** | ARM VM: **2 OCPU / 12 GB** (cut from 4/24 in June 2026) + 200 GB disk, 10 TB/mo egress | the whole stack (app + Postgres + Redis + Caddy) | signup verification is picky (often needs card + retries); capacity in popular regions is scarce; one broken VM = your whole outage |
 | **Cloudflare (free plan)** | unlimited DNS/DDoS proxy, WAF rate rules, STUN | fronting the VM, basic bot defense | proxied WebSockets are fine; don't proxy the DB |
-| **Cloudflare R2** | 10 GB storage, 1M Class A / 10M Class B ops/mo, **zero egress fees** | voice messages, verify clips, photos | enable CORS on the bucket (see §5); add a lifecycle rule |
+| **Cloudflare R2** | 10 GB storage, 1M Class A / 10M Class B ops/mo, **zero egress fees** | voice messages (offloaded server-side; photos stay inline in Postgres, verify clips aren't stored with the stock client) | enable CORS on the bucket (see §5); add a lifecycle rule |
 | **Cloudflare Realtime TURN** | 1 TB/mo relayed | video behind symmetric NATs | billed per GB after (remove the card or set a limit if paranoid) |
 | **Render free** | 512 MB / 0.1 CPU, 750 instance-hours/workspace/mo, sleeps after 15 min | zero-ops demo tier | **one** always-on free service max (2 services = both suspend mid-month); no disk, no SSH |
 | **Supabase free** | 500 MB Postgres, ~200 connections, 5 GB egress, pauses after 7 idle days | the DB for the Render path | tiny; moves to the VM's local Postgres when you outgrow it |
@@ -182,10 +183,11 @@ assets.
       "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
    ```
 4. Belt-and-braces retention rule (Settings → Object lifecycle rules):
-   expire objects with the prefix `media/verify/` after **1 day**. The app
-   already deletes verify clips itself (default 1 h), but a bucket rule is
-   restart-proof and costs nothing. **Do not** add lifecycle rules for
-   `media/voice/` or `media/photo/` — those are chat history and profiles.
+   expire objects with the prefix `media/verify/` after **1 day**. With the
+   stock client nothing lands there (clips are relay-only); API uploads
+   auto-delete after 1 h anyway, but a bucket rule is restart-proof and
+   costs nothing. **Do not** add lifecycle rules for `media/voice/` or
+   `media/photo/` — those are chat history and profiles.
 5. Put the values in `.env` (`S3_ENDPOINT` is the S3 API endpoint shown in
    the bucket overview), `docker compose up -d` again.
 
@@ -249,11 +251,12 @@ buckets in `state.js` deliberately make easy.
 - Keys are unguessable capability tokens (128-bit UUIDs) — same model as
   presigned S3 URLs. Messages only deliver keys to participants.
 - **Retention:** verify clips (the most sensitive media — actual video of
-  users) auto-delete after `VERIFY_CLIP_TTL_SEC` (default 1 h), and a
-  bucket lifecycle rule can cap that at 1 day as a backstop. Voice messages
-  and photos persist until the user deletes the message / clears the chat
-  (or you add an explicit retention policy — decide what your privacy
-  policy claims and set both accordingly).
+  users) are never stored with the stock client (relay-only), and API
+  uploads auto-delete after `VERIFY_CLIP_TTL_SEC` (default 1 h), with a
+  bucket lifecycle rule as a 1-day backstop. Voice messages and photos
+  persist until the user deletes the message / clears the chat (or you add
+  an explicit retention policy — decide what your privacy policy claims
+  and set both accordingly).
 - Admin panel: run it under the compose `admin` profile and keep it
   unexposed (SSH tunnel), or front it with Cloudflare Access.
 - The report → auto-ban policy is one click = permanent ban. At scale this
