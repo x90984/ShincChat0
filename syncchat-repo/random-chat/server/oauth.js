@@ -121,7 +121,7 @@ function mount(app, db, { createSession }) {
       const user = await db.findOrCreateOAuthUser({ provider: providerName, providerId: String(oauthId), displayName: username });
       if (user.is_banned) return res.redirect('/?auth_error=banned');
 
-      const token = createSession(user.id);
+      const token = await createSession(user.id);
       // Hand the token to the page via a short-lived hash fragment (never
       // sent to the server in a Referer/log line) — app.js picks it up on load.
       res.redirect(`/#auth_token=${token}`);

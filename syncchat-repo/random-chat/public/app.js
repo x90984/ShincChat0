@@ -1,4 +1,8 @@
-const socket = io();
+// WebSocket-only transport: keeps the connection working behind any load
+// balancer with no sticky-session setup, which is what lets the server
+// tier scale horizontally (multiple instances, one shared matching pool).
+// Zero visible difference — same connection, same events.
+const socket = io({ transports: ['websocket'] });
 
 let localStream = null;
 let pc = null;

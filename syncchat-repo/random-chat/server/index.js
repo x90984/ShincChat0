@@ -7,6 +7,13 @@ const crypto = require('crypto');
 const geoip = require('geoip-lite');
 const db = require('./db');
 const oauth = require('./oauth');
+const { createStore } = require('./store');
+
+// Shared state (matching queues, pairs, presence, sessions). In-memory by
+// default (single instance, zero config); automatically Redis-backed with
+// cross-instance Socket.io routing when REDIS_TCP_URL is set — that's what
+// lets a fleet of instances act as one matchmaking network.
+let store = null;
 
 // ---- Country/location matching helpers ----
 function getClientIp(socket) {
@@ -84,14 +91,12 @@ const io = new Server(server, { maxHttpBufferSize: 8e6 });
 app.use(express.json({ limit: '8mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// ---- Sessions (in-memory token -> userId) ----
-const sessions = new Map();
-
+// ---- Sessions (token -> userId; in shared state so any instance can auth) ----
 async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    const userId = token && sessions.get(token);
+    const userId = token && await store.getSession(token);
     const user = userId ? await db.getUser(userId) : null;
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
     if (user.is_banned) return res.status(403).json({ error: 'This account has been permanently banned.' });
@@ -103,9 +108,9 @@ async function requireAuth(req, res, next) {
   }
 }
 
-function createSession(userId) {
+async function createSession(userId) {
   const token = crypto.randomUUID();
-  sessions.set(token, userId);
+  await store.setSession(token, userId);
   return token;
 }
 
@@ -160,7 +165,7 @@ app.post('/api/signup', asyncRoute(async (req, res) => {
   }
   try {
     const user = await db.createUser({ email, password, phone, username, displayName: fullName, birthDate, youtubeLink });
-    const token = createSession(user.id);
+    const token = await createSession(user.id);
     res.json({ token, user: db.publicUser(user) });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -176,7 +181,7 @@ app.post('/api/login', asyncRoute(async (req, res) => {
   if (user.is_banned) {
     return res.status(403).json({ error: 'This account has been permanently banned.' });
   }
-  const token = createSession(user.id);
+  const token = await createSession(user.id);
   res.json({ token, user: db.publicUser(user) });
 }));
 
@@ -240,7 +245,7 @@ app.post('/api/contacts/match', requireAuth, asyncRoute(async (req, res) => {
   for (const u of users) {
     const friendStatus = await db.friendStatusBetween(req.userId, u.id);
     if (friendStatus === 'friends') continue;
-    matches.push({ ...db.publicUser(u), online: onlineUsers.has(u.id), friendStatus });
+    matches.push({ ...db.publicUser(u), online: !!(await store.getOnline(u.id)), friendStatus });
   }
   res.json({ matches });
 }));
@@ -273,7 +278,7 @@ app.get('/api/history', requireAuth, asyncRoute(async (req, res) => {
     conversations.push({
       conversationId: c.id,
       partner: partner ? db.publicUser(partner) : { id: partnerId, username: 'Deleted user', gender: null },
-      online: onlineUsers.has(partnerId),
+      online: !!(await store.getOnline(partnerId)),
       lastMessage: last,
       unreadCount,
       updatedAt: c.last_message_at || c.created_at
@@ -300,7 +305,7 @@ app.post('/api/history/:conversationId/disappearing', requireAuth, asyncRoute(as
   try {
     const mode = await db.setDisappearingMode(convo.id, req.body && req.body.mode);
     const otherId = db.otherUserId(convo, req.userId);
-    const otherSocketId = onlineUsers.get(otherId);
+    const otherSocketId = await store.getOnline(otherId);
     if (otherSocketId) io.to(otherSocketId).emit('disappearing-changed', { conversationId: convo.id, mode });
     res.json({ mode });
   } catch (e) {
@@ -311,7 +316,7 @@ app.post('/api/history/:conversationId/disappearing', requireAuth, asyncRoute(as
 app.post('/api/history/delete-all', requireAuth, asyncRoute(async (req, res) => {
   const cleared = await db.deleteAllConversationsForUser(req.userId);
   for (const { id, otherUserId: otherId } of cleared) {
-    const otherSocketId = onlineUsers.get(otherId);
+    const otherSocketId = await store.getOnline(otherId);
     if (otherSocketId) io.to(otherSocketId).emit('conversation-deleted', { conversationId: id });
   }
   res.json({ deletedCount: cleared.length });
@@ -324,7 +329,7 @@ app.post('/api/history/:conversationId/clear', requireAuth, asyncRoute(async (re
   if (!convo || !userInConversation(convo, req.userId)) return res.status(404).json({ error: 'Not found' });
   const otherId = db.otherUserId(convo, req.userId);
   await db.deleteConversation(convo.id);
-  const otherSocketId = onlineUsers.get(otherId);
+  const otherSocketId = await store.getOnline(otherId);
   if (otherSocketId) io.to(otherSocketId).emit('conversation-deleted', { conversationId: convo.id });
   res.json({ ok: true });
 }));
@@ -345,7 +350,7 @@ app.get('/api/history/recent-partners', requireAuth, asyncRoute(async (req, res)
     ]);
     partners.push({
       conversationId: c.id,
-      partner: { ...db.publicUser(partner), online: onlineUsers.has(partnerId) },
+      partner: { ...db.publicUser(partner), online: !!(await store.getOnline(partnerId)) },
       reviews, summary, messages
     });
   }
@@ -356,30 +361,36 @@ app.get('/api/history/recent-partners', requireAuth, asyncRoute(async (req, res)
 app.post('/api/users/:id/block', requireAuth, asyncRoute(async (req, res) => {
   if (req.params.id === req.userId) return res.status(400).json({ error: "You can't block yourself." });
   await db.blockUser(req.userId, req.params.id);
-  refreshBlockCache(req.userId).catch(() => {});
+  await refreshBlockCache(req.userId);
+  io.serverSideEmit('sc:invalidate-blocks', req.userId); // other instances refresh their cache
   // A block always ends any chat currently in progress with that person.
-  const mySocketId = onlineUsers.get(req.userId);
-  const myLiveSocketId = mySocketId && pairs.has(mySocketId) ? mySocketId : null;
-  if (myLiveSocketId && socketUser.get(pairs.get(myLiveSocketId)) === req.params.id) {
-    disconnectPartner(myLiveSocketId);
-    removeFromQueues(myLiveSocketId);
+  const mySocketId = await store.getOnline(req.userId);
+  if (mySocketId && await store.isPaired(mySocketId)) {
+    const partnerSocketId = await store.getPartner(mySocketId);
+    if (partnerSocketId && (await store.getSocketUser(partnerSocketId)) === req.params.id) {
+      await disconnectPartner(mySocketId);
+      await store.removeFromWaitingAll(mySocketId);
+    }
   }
   res.json({ ok: true });
 }));
 app.post('/api/users/:id/unblock', requireAuth, asyncRoute(async (req, res) => {
   await db.unblockUser(req.userId, req.params.id);
-  refreshBlockCache(req.userId).catch(() => {});
+  await refreshBlockCache(req.userId);
+  io.serverSideEmit('sc:invalidate-blocks', req.userId);
   res.json({ ok: true });
 }));
 app.post('/api/users/:id/mute', requireAuth, asyncRoute(async (req, res) => {
   if (req.params.id === req.userId) return res.status(400).json({ error: "You can't mute yourself." });
   await db.muteUser(req.userId, req.params.id);
-  refreshMuteCache(req.userId).catch(() => {});
+  await refreshMuteCache(req.userId);
+  io.serverSideEmit('sc:invalidate-mutes', req.userId);
   res.json({ ok: true });
 }));
 app.post('/api/users/:id/unmute', requireAuth, asyncRoute(async (req, res) => {
   await db.unmuteUser(req.userId, req.params.id);
-  refreshMuteCache(req.userId).catch(() => {});
+  await refreshMuteCache(req.userId);
+  io.serverSideEmit('sc:invalidate-mutes', req.userId);
   res.json({ ok: true });
 }));
 
@@ -390,7 +401,7 @@ app.get('/api/users/search', requireAuth, asyncRoute(async (req, res) => {
   const rows = await db.searchUsers(q, req.userId, 20);
   const users = [];
   for (const u of rows) {
-    users.push({ ...db.publicUser(u), online: onlineUsers.has(u.id), friendStatus: await db.friendStatusBetween(req.userId, u.id) });
+    users.push({ ...db.publicUser(u), online: !!(await store.getOnline(u.id)), friendStatus: await db.friendStatusBetween(req.userId, u.id) });
   }
   res.json({ users });
 }));
@@ -403,7 +414,7 @@ app.get('/api/users/:id', requireAuth, asyncRoute(async (req, res) => {
   res.json({
     user: {
       ...db.publicUser(user),
-      online: onlineUsers.has(user.id),
+      online: !!(await store.getOnline(user.id)),
       friendStatus: isSelf ? 'self' : await db.friendStatusBetween(req.userId, user.id),
       ...await db.getFollowCounts(user.id),
       isFollowing: isSelf ? false : await db.isFollowing(req.userId, user.id),
@@ -478,7 +489,8 @@ app.post('/api/location', requireAuth, asyncRoute(async (req, res) => {
 // ---- Suggested friends ----
 app.get('/api/users/suggestions', requireAuth, asyncRoute(async (req, res) => {
   const raw = await db.suggestFriends(req.userId, 20);
-  const suggestions = raw.map(u => ({ ...u, online: onlineUsers.has(u.id) }));
+  const suggestions = [];
+  for (const u of raw) suggestions.push({ ...u, online: !!(await store.getOnline(u.id)) });
   res.json({ suggestions });
 }));
 
@@ -488,7 +500,7 @@ app.get('/api/friends', requireAuth, asyncRoute(async (req, res) => {
   const friends = [];
   for (const id of ids) {
     const u = await db.getUser(id);
-    if (u) friends.push({ ...db.publicUser(u), online: onlineUsers.has(id) });
+    if (u) friends.push({ ...db.publicUser(u), online: !!(await store.getOnline(id)) });
   }
   res.json({ friends });
 }));
@@ -577,18 +589,19 @@ function buildIceServers() {
 const rtcConfigForClients = { iceServers: buildIceServers() };
 
 // ---- Matching state ----
-const waiting = { male: [], female: [] };
-const pairs = new Map();
-const users = new Map();
-const onlineUsers = new Map();
-const socketUser = new Map();
-const socketConv = new Map();
+// Everything below lives in the shared store (in-memory for a single
+// instance, Redis for a fleet) — this is what lets multiple server
+// instances act as one matchmaking network.
 
 // In-memory mirrors of the blocks/mutes tables, keyed by userId, so the
 // matching loop (which runs many times a second) never has to hit the DB.
-// Populated on auth, kept fresh via refreshBlockCache/refreshMuteCache.
+// Populated on auth, kept fresh via refreshBlockCache/refreshMuteCache and
+// cross-instance invalidation events (sc:invalidate-*).
 const blockedByUser = new Map(); // userId -> Set(userIds they blocked)
 const mutedByUser = new Map();   // userId -> Set(userIds they muted)
+
+io.on('sc:invalidate-blocks', (userId) => { refreshBlockCache(String(userId)).catch(() => {}); });
+io.on('sc:invalidate-mutes', (userId) => { refreshMuteCache(String(userId)).catch(() => {}); });
 
 async function refreshBlockCache(userId) {
   blockedByUser.set(userId, new Set(await db.getBlockedUserIds(userId)));
@@ -609,23 +622,24 @@ function oppositeOf(gender) {
   return gender === 'male' ? 'female' : 'male';
 }
 
+// Pairing must already be established in the store before this runs
+// (claimPair for queue matches, pairDirect for friend-calls/resumes).
 async function startConversation(socketIdA, socketIdB, resumed, conversationId) {
-  pairs.set(socketIdA, socketIdB);
-  pairs.set(socketIdB, socketIdA);
-
-  const userIdA = socketUser.get(socketIdA);
-  const userIdB = socketUser.get(socketIdB);
+  const userIdA = await store.getSocketUser(socketIdA);
+  const userIdB = await store.getSocketUser(socketIdB);
   const convo = conversationId
     ? await db.getConversation(conversationId)
     : (userIdA && userIdB ? await db.findOrCreateConversation(userIdA, userIdB) : null);
   if (convo) {
-    socketConv.set(socketIdA, convo.id);
-    socketConv.set(socketIdB, convo.id);
+    await store.setSocketConv(socketIdA, convo.id);
+    await store.setSocketConv(socketIdB, convo.id);
+    await store.joinConversation(convo.id, socketIdA);
+    await store.joinConversation(convo.id, socketIdB);
   }
 
   const roomId = crypto.randomUUID();
-  const userA = users.get(socketIdA);
-  const userB = users.get(socketIdB);
+  const userA = await store.getEntry(socketIdA);
+  const userB = await store.getEntry(socketIdB);
   if (!userA || !userB) return; // one side disconnected mid-setup
 
   const aMutedB = !!(mutedByUser.get(userIdA) && userIdB && mutedByUser.get(userIdA).has(userIdB));
@@ -642,47 +656,58 @@ async function startConversation(socketIdA, socketIdB, resumed, conversationId) 
     rtcConfig: rtcConfigForClients
   });
 
+  // Rooms are a local-instance convenience only; all routing goes via
+  // socket ids, which the Redis adapter delivers cross-instance.
   io.sockets.sockets.get(socketIdA)?.join(roomId);
   io.sockets.sockets.get(socketIdB)?.join(roomId);
 }
 
-function tryMatch(socketId) {
-  const entry = users.get(socketId);
+async function tryMatch(socketId) {
+  const entry = await store.getEntry(socketId);
   if (!entry) return false;
-  if (!entry.queuedAt) entry.queuedAt = Date.now();
+  if (await store.isPaired(socketId)) return false;
+  if (!entry.queuedAt) { entry.queuedAt = Date.now(); await store.setEntry(socketId, entry); }
 
-  const targetQueue = waiting[oppositeOf(entry.gender)];
   const now = Date.now();
+  const candidates = await store.sampleWaiting(oppositeOf(entry.gender), 25);
 
-  for (let i = 0; i < targetQueue.length; i++) {
-    const candidateId = targetQueue[i];
+  for (const candidateId of candidates) {
     if (candidateId === socketId) continue;
-    const candidateSocket = io.sockets.sockets.get(candidateId);
-    const candidateEntry = users.get(candidateId);
-    if (!candidateSocket || !candidateEntry || pairs.has(candidateId)) {
-      targetQueue.splice(i, 1);
-      i--;
+    const candidateEntry = await store.getEntry(candidateId);
+    if (!candidateEntry || await store.isPaired(candidateId)) {
+      await store.removeFromWaitingAll(candidateId);
       continue;
     }
     if (!usersCompatible(entry, candidateEntry, now)) continue;
-    if (isBlockedPairSync(socketUser.get(socketId), socketUser.get(candidateId))) continue;
+    const myUserId = await store.getSocketUser(socketId);
+    const theirUserId = await store.getSocketUser(candidateId);
+    if (isBlockedPairSync(myUserId, theirUserId)) continue;
 
-    targetQueue.splice(i, 1);
-    removeFromQueues(socketId);
+    // Atomic across instances: exactly one matcher wins this pair.
+    const claimed = await store.claimPair(socketId, candidateId);
+    if (!claimed) continue;
     startConversation(socketId, candidateId, false, null).catch(e => console.error('startConversation failed:', e));
     return true;
   }
 
-  if (!waiting[entry.gender].includes(socketId)) waiting[entry.gender].push(socketId);
+  await store.addToWaiting(entry.gender, socketId);
   return false;
 }
 
-setInterval(() => {
-  const queued = [...waiting.male, ...waiting.female];
-  for (const socketId of queued) {
-    if (pairs.has(socketId)) continue;
-    if (!waiting.male.includes(socketId) && !waiting.female.includes(socketId)) continue;
-    tryMatch(socketId);
+// Periodic rematch sweep — safe to run on every instance simultaneously
+// (claimPair is atomic), so paired-up stragglers get picked up no matter
+// which node they're connected to.
+setInterval(async () => {
+  try {
+    for (const gender of ['male', 'female']) {
+      const queued = await store.sampleWaiting(gender, 100);
+      for (const socketId of queued) {
+        if (await store.isPaired(socketId)) continue;
+        await tryMatch(socketId);
+      }
+    }
+  } catch (e) {
+    console.error('match sweep failed:', e);
   }
 }, 5000);
 
@@ -693,8 +718,8 @@ setInterval(async () => {
   try {
     const cleared = await db.sweepExpiredMessages();
     for (const { conversationId, id } of cleared) {
-      for (const [socketId, convId] of socketConv.entries()) {
-        if (convId === conversationId) io.to(socketId).emit('message-deleted', { messageId: id });
+      for (const socketId of await store.getConversationSockets(conversationId)) {
+        io.to(socketId).emit('message-deleted', { messageId: id });
       }
     }
     await db.pruneTombstones(7 * 24 * 60 * 60 * 1000);
@@ -703,27 +728,24 @@ setInterval(async () => {
   }
 }, 60 * 1000);
 
-function removeFromQueues(socketId) {
-  waiting.male = waiting.male.filter(id => id !== socketId);
-  waiting.female = waiting.female.filter(id => id !== socketId);
-}
-
-function disconnectPartner(socketId) {
-  const partnerId = pairs.get(socketId);
+async function disconnectPartner(socketId) {
+  const convId = await store.getSocketConv(socketId);
+  if (convId) await store.leaveConversation(convId, socketId);
+  const partnerId = await store.unpair(socketId);
   if (partnerId) {
     io.to(partnerId).emit('partner-left');
-    pairs.delete(partnerId);
-    socketConv.delete(partnerId);
+    const partnerConv = await store.getSocketConv(partnerId);
+    if (partnerConv) await store.leaveConversation(partnerConv, partnerId);
+    await store.delSocketConv(partnerId);
   }
-  pairs.delete(socketId);
-  socketConv.delete(socketId);
+  await store.delSocketConv(socketId);
 }
 
 io.on('connection', (socket) => {
 
   socket.on('auth', ({ token }) => {
     (async () => {
-      const userId = sessions.get(token);
+      const userId = await store.getSession(token);
       const user = userId ? await db.getUser(userId) : null;
       if (!user) {
         socket.emit('auth-error');
@@ -734,8 +756,8 @@ io.on('connection', (socket) => {
         socket.disconnect(true);
         return;
       }
-      socketUser.set(socket.id, userId);
-      onlineUsers.set(userId, socket.id);
+      await store.setSocketUser(socket.id, userId);
+      await store.setOnline(userId, socket.id);
       await db.setLastCountry(userId, detectedCountry);
       await Promise.all([refreshBlockCache(userId), refreshMuteCache(userId)]);
     })().catch(e => console.error('auth handler failed:', e));
@@ -759,66 +781,79 @@ io.on('connection', (socket) => {
 
   socket.on('find-partner', ({ gender, lookingFor, countryMode, country, lat, lon }) => {
     if (!['male', 'female'].includes(gender)) return;
-    users.set(socket.id, buildEntry(gender, lookingFor, { countryMode, country, lat, lon }));
-    removeFromQueues(socket.id);
-    disconnectPartner(socket.id);
-    tryMatch(socket.id);
+    (async () => {
+      await store.setEntry(socket.id, buildEntry(gender, lookingFor, { countryMode, country, lat, lon }));
+      await store.removeFromWaitingAll(socket.id);
+      await disconnectPartner(socket.id);
+      await tryMatch(socket.id);
+    })().catch(e => console.error('find-partner failed:', e));
   });
 
   socket.on('set-country-mode', ({ countryMode, country, lat, lon }) => {
-    const entry = users.get(socket.id);
-    if (!entry) return;
-    const mode = VALID_COUNTRY_MODES.includes(countryMode) ? countryMode : 'random';
-    entry.countryMode = mode;
-    entry.country = mode === 'country' && typeof country === 'string' ? country.toUpperCase().slice(0, 2) : null;
-    entry.lat = mode === 'nearby' && typeof lat === 'number' ? lat : null;
-    entry.lon = mode === 'nearby' && typeof lon === 'number' ? lon : null;
-    if (!pairs.has(socket.id)) tryMatch(socket.id);
+    (async () => {
+      const entry = await store.getEntry(socket.id);
+      if (!entry) return;
+      const mode = VALID_COUNTRY_MODES.includes(countryMode) ? countryMode : 'random';
+      entry.countryMode = mode;
+      entry.country = mode === 'country' && typeof country === 'string' ? country.toUpperCase().slice(0, 2) : null;
+      entry.lat = mode === 'nearby' && typeof lat === 'number' ? lat : null;
+      entry.lon = mode === 'nearby' && typeof lon === 'number' ? lon : null;
+      await store.setEntry(socket.id, entry);
+      if (!await store.isPaired(socket.id)) await tryMatch(socket.id);
+    })().catch(e => console.error('set-country-mode failed:', e));
   });
 
   socket.on('call-friend', ({ friendUserId }) => {
     (async () => {
-      const myUserId = socketUser.get(socket.id);
+      const myUserId = await store.getSocketUser(socket.id);
       if (!myUserId) return socket.emit('call-failed', { reason: 'not-authenticated' });
       if (!friendUserId || !await db.areFriends(myUserId, friendUserId)) {
         return socket.emit('call-failed', { reason: 'not-friends' });
       }
-      const friendSocketId = onlineUsers.get(friendUserId);
-      const friendSocket = friendSocketId && io.sockets.sockets.get(friendSocketId);
-      if (!friendSocket) return socket.emit('call-failed', { reason: 'offline' });
-      if (pairs.has(socket.id) || pairs.has(friendSocketId)) return socket.emit('call-failed', { reason: 'busy' });
+      // Presence is shared across instances, so the friend can be online
+      // on a different server than us — io.to() still reaches them.
+      const friendSocketId = await store.getOnline(friendUserId);
+      if (!friendSocketId) return socket.emit('call-failed', { reason: 'offline' });
+      if (await store.isPaired(socket.id) || await store.isPaired(friendSocketId)) {
+        return socket.emit('call-failed', { reason: 'busy' });
+      }
 
       const myUser = await db.getUser(myUserId);
       const friendUser = await db.getUser(friendUserId);
-      removeFromQueues(socket.id);
-      removeFromQueues(friendSocketId);
-      users.set(socket.id, buildEntry(myUser.gender, friendUser.gender));
-      users.set(friendSocketId, buildEntry(friendUser.gender, myUser.gender));
+      await store.removeFromWaitingAll(socket.id);
+      await store.removeFromWaitingAll(friendSocketId);
+      await store.setEntry(socket.id, buildEntry(myUser.gender, friendUser.gender));
+      await store.setEntry(friendSocketId, buildEntry(friendUser.gender, myUser.gender));
+      await store.pairDirect(socket.id, friendSocketId);
       const convo = await db.findOrCreateConversation(myUserId, friendUserId);
       await startConversation(socket.id, friendSocketId, false, convo.id);
     })().catch(e => { console.error('call-friend failed:', e); socket.emit('call-failed', { reason: 'server-error' }); });
   });
 
   socket.on('skip', () => {
-    disconnectPartner(socket.id);
-    removeFromQueues(socket.id);
-    const entry = users.get(socket.id);
-    if (entry) entry.queuedAt = Date.now();
-    tryMatch(socket.id);
+    (async () => {
+      await disconnectPartner(socket.id);
+      await store.removeFromWaitingAll(socket.id);
+      const entry = await store.getEntry(socket.id);
+      if (entry) { entry.queuedAt = Date.now(); await store.setEntry(socket.id, entry); }
+      await tryMatch(socket.id);
+    })().catch(e => console.error('skip failed:', e));
   });
 
   socket.on('cancel-search', () => {
-    removeFromQueues(socket.id);
+    store.removeFromWaitingAll(socket.id).catch(() => {});
   });
 
   socket.on('leave-chat', () => {
-    disconnectPartner(socket.id);
-    removeFromQueues(socket.id);
+    (async () => {
+      await disconnectPartner(socket.id);
+      await store.removeFromWaitingAll(socket.id);
+    })().catch(e => console.error('leave-chat failed:', e));
   });
 
   socket.on('resume-chat', ({ conversationId }) => {
     (async () => {
-      const myUserId = socketUser.get(socket.id);
+      const myUserId = await store.getSocketUser(socket.id);
       if (!myUserId) return;
       const convo = await db.getConversation(conversationId);
       if (!convo || !userInConversation(convo, myUserId)) {
@@ -826,22 +861,22 @@ io.on('connection', (socket) => {
         return;
       }
       const partnerId = db.otherUserId(convo, myUserId);
-      const partnerSocketId = onlineUsers.get(partnerId);
-      const partnerSocket = partnerSocketId && io.sockets.sockets.get(partnerSocketId);
-      if (!partnerSocket) {
+      const partnerSocketId = await store.getOnline(partnerId);
+      if (!partnerSocketId) {
         socket.emit('resume-failed', { reason: 'offline' });
         return;
       }
-      if (pairs.has(socket.id) || pairs.has(partnerSocketId)) {
+      if (await store.isPaired(socket.id) || await store.isPaired(partnerSocketId)) {
         socket.emit('resume-failed', { reason: 'busy' });
         return;
       }
       const partnerUser = await db.getUser(partnerId);
       const myUser = await db.getUser(myUserId);
-      removeFromQueues(socket.id);
-      removeFromQueues(partnerSocketId);
-      users.set(socket.id, buildEntry(myUser.gender, partnerUser.gender));
-      users.set(partnerSocketId, buildEntry(partnerUser.gender, myUser.gender));
+      await store.removeFromWaitingAll(socket.id);
+      await store.removeFromWaitingAll(partnerSocketId);
+      await store.setEntry(socket.id, buildEntry(myUser.gender, partnerUser.gender));
+      await store.setEntry(partnerSocketId, buildEntry(partnerUser.gender, myUser.gender));
+      await store.pairDirect(socket.id, partnerSocketId);
       await startConversation(socket.id, partnerSocketId, true, convo.id);
     })().catch(e => { console.error('resume-chat failed:', e); socket.emit('resume-failed', { reason: 'server-error' }); });
   });
@@ -858,12 +893,14 @@ io.on('connection', (socket) => {
     if (typeof text !== 'string' || typeof id !== 'string') return;
     const trimmed = text.trim().slice(0, MAX_MESSAGE_LENGTH);
     if (!trimmed) return;
-    const partnerId = pairs.get(socket.id);
-    if (!partnerId) return;
-    io.to(partnerId).emit('chat-message', {
-      id, ts: typeof ts === 'number' ? ts : Date.now(), text: trimmed,
-      replyTo: replyTo && typeof replyTo.id === 'string' ? { id: replyTo.id, text: typeof replyTo.text === 'string' ? replyTo.text.slice(0, 200) : null } : null
-    });
+    (async () => {
+      const partnerId = await store.getPartner(socket.id);
+      if (!partnerId) return;
+      io.to(partnerId).emit('chat-message', {
+        id, ts: typeof ts === 'number' ? ts : Date.now(), text: trimmed,
+        replyTo: replyTo && typeof replyTo.id === 'string' ? { id: replyTo.id, text: typeof replyTo.text === 'string' ? replyTo.text.slice(0, 200) : null } : null
+      });
+    })().catch(e => console.error('chat-message relay failed:', e));
   });
 
   // Content-free activity ping, sent once per message the client sends
@@ -871,19 +908,21 @@ io.on('connection', (socket) => {
   // partner's chat list can show unread badges, ordering and a generic
   // "Message" / "Voice message" preview — never the content itself.
   socket.on('conv-activity', ({ type }) => {
-    const convId = socketConv.get(socket.id);
-    const senderId = socketUser.get(socket.id);
-    if (!convId || !senderId) return;
-    db.noteConversationActivity(convId, senderId, type === 'voice' ? 'voice' : 'text')
-      .catch(e => console.error('conv-activity failed:', e));
+    (async () => {
+      const convId = await store.getSocketConv(socket.id);
+      const senderId = await store.getSocketUser(socket.id);
+      if (!convId || !senderId) return;
+      await db.noteConversationActivity(convId, senderId, type === 'voice' ? 'voice' : 'text');
+    })().catch(e => console.error('conv-activity failed:', e));
   });
 
   socket.on('delete-message', ({ messageId, mode }) => {
-    const userId = socketUser.get(socket.id);
-    if (!userId || typeof messageId !== 'string') return;
-    const convId = socketConv.get(socket.id);
-    const partnerId = pairs.get(socket.id);
+    if (typeof messageId !== 'string') return;
     (async () => {
+      const userId = await store.getSocketUser(socket.id);
+      if (!userId) return;
+      const convId = await store.getSocketConv(socket.id);
+      const partnerId = await store.getPartner(socket.id);
       if (mode === 'everyone') {
         // The deletion itself is applied device-to-device; the tombstone
         // (message ID only) makes it stick for an offline partner too.
@@ -900,10 +939,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('set-disappearing', ({ mode }) => {
-    const convId = socketConv.get(socket.id);
-    const partnerId = pairs.get(socket.id);
-    if (!convId) return;
     (async () => {
+      const convId = await store.getSocketConv(socket.id);
+      if (!convId) return;
+      const partnerId = await store.getPartner(socket.id);
       try {
         await db.setDisappearingMode(convId, mode);
         socket.emit('disappearing-changed', { mode });
@@ -916,94 +955,96 @@ io.on('connection', (socket) => {
     // P2P mode: read receipts themselves travel device-to-device over the
     // data channel; the server's only job left here is clearing the
     // content-free unread counter that powers the chat-list badge.
-    const convId = socketConv.get(socket.id);
-    const userId = socketUser.get(socket.id);
-    if (!convId || !userId) return;
-    db.clearUnread(convId, userId).catch(e => console.error('mark-seen failed:', e));
+    (async () => {
+      const convId = await store.getSocketConv(socket.id);
+      const userId = await store.getSocketUser(socket.id);
+      if (!convId || !userId) return;
+      await db.clearUnread(convId, userId);
+    })().catch(e => console.error('mark-seen failed:', e));
   });
 
   // WebRTC signaling relay
-  socket.on('webrtc-offer', (payload) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('webrtc-offer', async (payload) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('webrtc-offer', payload);
   });
 
-  socket.on('webrtc-answer', (payload) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('webrtc-answer', async (payload) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('webrtc-answer', payload);
   });
 
-  socket.on('webrtc-ice-candidate', (payload) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('webrtc-ice-candidate', async (payload) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('webrtc-ice-candidate', payload);
   });
 
-  socket.on('verify-request', () => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('verify-request', async () => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('verify-request');
   });
 
   // One side viewing the other's profile mid-video-call — tell the other
   // side so it can blur its view of the departed person's video feed.
-  socket.on('viewing-profile', (payload) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('viewing-profile', async (payload) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('partner-viewing-profile', { viewing: !!(payload && payload.viewing) });
   });
 
-  socket.on('verify-video', ({ video }) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('verify-video', async ({ video }) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('verify-video', { video });
   });
 
-  socket.on('reveal-request', () => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('reveal-request', async () => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('reveal-request');
   });
 
-  socket.on('reveal-response', ({ accepted }) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('reveal-response', async ({ accepted }) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('reveal-response', { accepted });
   });
 
-  socket.on('switch-mode-request', ({ toMode }) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('switch-mode-request', async ({ toMode }) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('switch-mode-request', { toMode });
   });
 
-  socket.on('switch-mode-response', ({ accepted, toMode }) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('switch-mode-response', async ({ accepted, toMode }) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('switch-mode-response', { accepted, toMode });
   });
 
-  socket.on('voice-request', () => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('voice-request', async () => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('voice-request');
   });
 
-  socket.on('voice-response', ({ accepted }) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('voice-response', async ({ accepted }) => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('voice-response', { accepted });
   });
 
-  socket.on('voice-end', () => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('voice-end', async () => {
+    const partnerId = await store.getPartner(socket.id);
     if (partnerId) io.to(partnerId).emit('voice-end');
   });
 
   // Fallback relay for voice messages — see the chat-message comment.
   // Forwards the audio to the partner untouched, stores nothing.
-  socket.on('voice-message', ({ id, ts, audio }) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('voice-message', async ({ id, ts, audio }) => {
+    const partnerId = await store.getPartner(socket.id);
     if (!partnerId || typeof id !== 'string' || typeof audio !== 'string') return;
     io.to(partnerId).emit('voice-message', { id, ts: typeof ts === 'number' ? ts : Date.now(), audio });
   });
 
   const VALID_REPORT_REASONS = ['incorrect_gender', 'inappropriate', 'fraud', 'other'];
-  socket.on('report', ({ reason, details }) => {
-    const partnerId = pairs.get(socket.id);
+  socket.on('report', async ({ reason, details }) => {
+    const partnerId = await store.getPartner(socket.id);
     if (!partnerId) return;
-    const reporterId = socketUser.get(socket.id);
-    const reportedId = socketUser.get(partnerId);
+    const reporterId = await store.getSocketUser(socket.id);
+    const reportedId = await store.getSocketUser(partnerId);
     if (!reporterId || !reportedId) return;
     const safeReason = VALID_REPORT_REASONS.includes(reason) ? reason : 'other';
 
@@ -1014,11 +1055,11 @@ io.on('connection', (socket) => {
       if (autoBan) {
         await db.banUser(reportedId);
         socket.emit('report-ack', { banned: true });
-        const reportedSocketId = onlineUsers.get(reportedId);
+        const reportedSocketId = await store.getOnline(reportedId);
         if (reportedSocketId) {
           io.to(reportedSocketId).emit('banned');
-          disconnectPartner(reportedSocketId);
-          removeFromQueues(reportedSocketId);
+          await disconnectPartner(reportedSocketId);
+          await store.removeFromWaitingAll(reportedSocketId);
           io.sockets.sockets.get(reportedSocketId)?.disconnect(true);
         }
       } else {
@@ -1031,71 +1072,79 @@ io.on('connection', (socket) => {
   // used from the in-chat "more" (⋮) menu so a Block ends the live chat
   // immediately without waiting on a page refresh). ----
   socket.on('block-user', ({ userId: targetUserId } = {}) => {
-    const myUserId = socketUser.get(socket.id);
-    if (!myUserId || !targetUserId || targetUserId === myUserId) return;
     (async () => {
+      const myUserId = await store.getSocketUser(socket.id);
+      if (!myUserId || !targetUserId || targetUserId === myUserId) return;
       await db.blockUser(myUserId, targetUserId);
       await refreshBlockCache(myUserId);
+      io.serverSideEmit('sc:invalidate-blocks', myUserId);
       socket.emit('block-ack', { userId: targetUserId, blocked: true });
-      const partnerSocketId = pairs.get(socket.id);
-      if (partnerSocketId && socketUser.get(partnerSocketId) === targetUserId) {
-        disconnectPartner(socket.id);
-        removeFromQueues(socket.id);
+      const partnerSocketId = await store.getPartner(socket.id);
+      if (partnerSocketId && (await store.getSocketUser(partnerSocketId)) === targetUserId) {
+        await disconnectPartner(socket.id);
+        await store.removeFromWaitingAll(socket.id);
       }
     })().catch(e => console.error('block-user failed:', e));
   });
 
   socket.on('unblock-user', ({ userId: targetUserId } = {}) => {
-    const myUserId = socketUser.get(socket.id);
-    if (!myUserId || !targetUserId) return;
     (async () => {
+      const myUserId = await store.getSocketUser(socket.id);
+      if (!myUserId || !targetUserId) return;
       await db.unblockUser(myUserId, targetUserId);
       await refreshBlockCache(myUserId);
+      io.serverSideEmit('sc:invalidate-blocks', myUserId);
       socket.emit('block-ack', { userId: targetUserId, blocked: false });
     })().catch(e => console.error('unblock-user failed:', e));
   });
 
   socket.on('mute-user', ({ userId: targetUserId } = {}) => {
-    const myUserId = socketUser.get(socket.id);
-    if (!myUserId || !targetUserId || targetUserId === myUserId) return;
     (async () => {
+      const myUserId = await store.getSocketUser(socket.id);
+      if (!myUserId || !targetUserId || targetUserId === myUserId) return;
       await db.muteUser(myUserId, targetUserId);
       await refreshMuteCache(myUserId);
+      io.serverSideEmit('sc:invalidate-mutes', myUserId);
       socket.emit('mute-ack', { userId: targetUserId, muted: true });
     })().catch(e => console.error('mute-user failed:', e));
   });
 
   socket.on('unmute-user', ({ userId: targetUserId } = {}) => {
-    const myUserId = socketUser.get(socket.id);
-    if (!myUserId || !targetUserId) return;
     (async () => {
+      const myUserId = await store.getSocketUser(socket.id);
+      if (!myUserId || !targetUserId) return;
       await db.unmuteUser(myUserId, targetUserId);
       await refreshMuteCache(myUserId);
+      io.serverSideEmit('sc:invalidate-mutes', myUserId);
       socket.emit('mute-ack', { userId: targetUserId, muted: false });
     })().catch(e => console.error('unmute-user failed:', e));
   });
 
   socket.on('disconnect', () => {
-    disconnectPartner(socket.id);
-    removeFromQueues(socket.id);
-    users.delete(socket.id);
-    const userId = socketUser.get(socket.id);
-    if (userId && onlineUsers.get(userId) === socket.id) onlineUsers.delete(userId);
-    socketUser.delete(socket.id);
+    (async () => {
+      const userId = await store.getSocketUser(socket.id);
+      await disconnectPartner(socket.id);
+      await store.removeFromWaitingAll(socket.id);
+      await store.delEntry(socket.id);
+      if (userId) await store.clearOnlineIf(userId, socket.id);
+      await store.delSocketUser(socket.id);
+    })().catch(e => console.error('disconnect cleanup failed:', e));
   });
 });
 
 const PORT = process.env.PORT || 3000;
 
-// Wait for the Postgres schema to exist before accepting any traffic —
-// otherwise the very first requests after a deploy could race the schema
-// creation in db.js and fail.
-db.ready.then(() => {
+// Wait for the Postgres schema AND the shared state store before accepting
+// any traffic — otherwise the very first requests after a deploy could race
+// initialization and fail.
+(async () => {
+  store = await createStore(io); // in-memory by default; Redis + cross-instance adapter when REDIS_TCP_URL is set
+  await db.ready;
   server.listen(PORT, () => {
-    console.log(`Random chat server running on port ${PORT}`);
+    console.log(`Random chat server running on port ${PORT} (store: ${store.kind})`);
   });
-}).catch((e) => {
-  console.error('Failed to start — database not ready:', e);
+})().catch((e) => {
+  console.error('Failed to start:', e);
   process.exit(1);
 });
 
@@ -1104,7 +1153,8 @@ db.ready.then(() => {
 function gracefulShutdown() {
   db.flushPendingWrites()
     .catch(e => console.error('Flush on shutdown failed:', e))
-    .finally(() => {
+    .finally(async () => {
+      try { store && await store.close(); } catch {}
       server.close(() => process.exit(0));
       setTimeout(() => process.exit(0), 3000).unref();
     });

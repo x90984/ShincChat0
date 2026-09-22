@@ -68,11 +68,45 @@ The server literally cannot read a conversation: it never receives one.
   the sender's device deletes its local copy the moment the partner's device
   sends the "seen" ack over the data channel.
 
+## Scaling to millions of users
+
+The P2P content model means the **expensive part (bandwidth/content delivery)
+is carried by the users' own devices at any scale** — exactly the BitTorrent
+economics. The server tier only does matchmaking + opaque signaling + tiny
+metadata pings, so it scales horizontally and cheaply:
+
+| Mode | Setup | What it handles | Cost |
+| --- | --- | --- | --- |
+| **Single instance** (default) | Nothing — run the app | Thousands concurrent | Free tier / one small box |
+| **Fleet mode** | Set `REDIS_TCP_URL` + launch N instances behind a load balancer | As many as N instances cover (tens of thousands each) | N small boxes + one Redis |
+
+How fleet mode works (all automatic once `REDIS_TCP_URL` is set):
+
+- Matching queues, active pairs, presence and sessions move into Redis, so
+  every instance sees every user — one global matchmaking network.
+- The Socket.io Redis adapter routes events (matched, signaling, presence)
+  across instances; a pair whose members sit on different servers still
+  connects, and their content still flows device-to-device.
+- Pair claiming is atomic (Redis Lua), so two instances can never
+  double-match the same user.
+- The client uses a WebSocket-only transport, so any plain load balancer
+  works — no sticky sessions required.
+
+**The honest ceiling of "free":** free tiers comfortably run single-instance
+mode (thousands concurrent, $0). Fleet mode needs a Redis — free options
+exist (Oracle Cloud free tier, Upstash free plan for light use) but a
+serious deployment eventually pays for Redis + instances + Postgres, because
+*coordination* (accounts, matchmaking, presence) still needs always-on
+servers everywhere — BitTorrent included (its trackers/DHT bootstrap nodes
+are servers too). What you never pay for, at any scale, is the chat content
+itself.
+
 ## Mapping the wider decentralization vision
 
 | Idea | Status | Notes |
 | --- | --- | --- |
 | Pure P2P content transport (BitTorrent-style) | ✅ Done | WebRTC DataChannel/media, DTLS/SRTP encrypted |
+| Horizontally scalable coordination layer | ✅ Done | `REDIS_TCP_URL` turns one instance into a fleet sharing matching/presence/sessions |
 | DHT / trackerless peer discovery | ◐ Partial | Browser WebRTC still needs a signaling rendezvous; our server is that content-blind rendezvous (the "tracker"). A WebTorrent-tracker or DHT-backed signaling relay could replace it later without touching the app. |
 | Server never stores content | ✅ Done | Content-free metadata only |
 | Magnet-link style zero-backend sharing | N/A | Applies to file distribution, not live matching |
